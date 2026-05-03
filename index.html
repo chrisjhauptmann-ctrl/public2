@@ -11,8 +11,72 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #0d1117; color: #c9d1d9; }
 
-    /* MAP */
-    #map { flex: 1; min-width: 0; }
+    /* MAP WRAPPER */
+    #map-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+    /* SEARCH BAR */
+    #search-bar {
+      display: flex;
+      gap: 6px;
+      padding: 8px 10px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      z-index: 999;
+    }
+    #search-input {
+      flex: 1;
+      padding: 7px 11px;
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    #search-input:focus { border-color: #58a6ff; }
+    #search-btn {
+      padding: 7px 14px;
+      background: #1f6feb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    #search-btn:hover { background: #388bfd; }
+    #tile-select {
+      padding: 7px 8px;
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #map { flex: 1; }
+
+    /* CLICK TOAST */
+    #coord-toast {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(13,17,23,0.92);
+      color: #79c0ff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: monospace;
+      border: 1px solid #30363d;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .25s;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+    #coord-toast.show { opacity: 1; }
 
     /* SIDEBAR */
     #sidebar {
@@ -24,66 +88,64 @@
       overflow: hidden;
     }
 
-    /* HEADER */
     #header {
-      padding: 14px 18px;
+      padding: 12px 18px;
       background: #0f3460;
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-shrink: 0;
     }
-    #header h1 { font-size: 1.25rem; color: #58a6ff; letter-spacing: 1px; }
-    #header small { font-size: 0.7rem; color: #8b949e; }
+    #header h1 { font-size: 1.2rem; color: #58a6ff; letter-spacing: 1px; }
+    #header small { font-size: 0.68rem; color: #8b949e; }
 
-    /* STATUS */
     #status {
-      padding: 6px 18px;
+      padding: 5px 18px;
       font-size: 0.72rem;
       color: #8b949e;
       background: #0d1117;
       border-bottom: 1px solid #21262d;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      flex-shrink: 0;
     }
     #status.ready { color: #3fb950; }
     #status.error  { color: #f85149; }
 
-    /* EDITOR */
     .panel-label {
-      padding: 10px 18px 5px;
-      font-size: 0.7rem;
+      padding: 9px 18px 4px;
+      font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: #8b949e;
+      flex-shrink: 0;
     }
 
     #editor {
-      margin: 0 12px;
-      height: 220px;
+      margin: 0 10px;
+      height: 200px;
       background: #0d1117;
       color: #c9d1d9;
       border: 1px solid #30363d;
       border-radius: 6px;
       padding: 10px 12px;
       font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-      font-size: 12.5px;
+      font-size: 12px;
       resize: none;
       outline: none;
       tab-size: 4;
       line-height: 1.55;
+      flex-shrink: 0;
     }
     #editor:focus { border-color: #58a6ff; }
 
-    /* BUTTONS */
     #btn-row {
       display: flex;
-      gap: 8px;
-      margin: 8px 12px;
+      gap: 6px;
+      margin: 7px 10px;
+      flex-shrink: 0;
     }
     #run-btn {
       flex: 1;
-      padding: 9px;
+      padding: 8px;
       background: #238636;
       color: #fff;
       border: none;
@@ -95,24 +157,26 @@
     }
     #run-btn:hover:not(:disabled) { background: #2ea043; }
     #run-btn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
-    #clear-btn {
-      padding: 9px 14px;
+
+    .icon-btn {
+      padding: 8px 11px;
       background: #21262d;
       color: #c9d1d9;
       border: 1px solid #30363d;
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 13px;
       cursor: pointer;
       transition: background .15s;
+      white-space: nowrap;
     }
-    #clear-btn:hover { background: #30363d; }
+    .icon-btn:hover { background: #30363d; }
 
-    /* EXAMPLES */
     #examples {
-      margin: 0 12px 4px;
+      margin: 0 10px 4px;
       display: flex;
       flex-wrap: wrap;
-      gap: 5px;
+      gap: 4px;
+      flex-shrink: 0;
     }
     .ex-btn {
       padding: 3px 9px;
@@ -127,28 +191,41 @@
     }
     .ex-btn:hover { background: #1f4e8a; }
 
-    /* OUTPUT */
     #output {
-      margin: 0 12px 12px;
+      margin: 0 10px 10px;
       flex: 1;
       background: #0d1117;
       border: 1px solid #30363d;
       border-radius: 6px;
-      padding: 10px 12px;
+      padding: 9px 12px;
       font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-      font-size: 11.5px;
+      font-size: 11px;
       overflow-y: auto;
       line-height: 1.55;
+      min-height: 80px;
     }
     .out-info    { color: #79c0ff; }
     .out-success { color: #3fb950; }
     .out-error   { color: #f85149; }
-    .out-warn    { color: #e3b341; }
+    .out-click   { color: #e3b341; }
   </style>
 </head>
 <body>
 
-<div id="map"></div>
+<div id="map-wrap">
+  <div id="search-bar">
+    <input id="search-input" type="text" placeholder="Adresse oder Ort suchen..." />
+    <button id="search-btn">&#x1F50D; Suchen</button>
+    <select id="tile-select">
+      <option value="osm">OSM Standard</option>
+      <option value="topo">Topo</option>
+      <option value="satellite">Satellite</option>
+      <option value="dark">Dark</option>
+    </select>
+  </div>
+  <div id="map"></div>
+  <div id="coord-toast"></div>
+</div>
 
 <div id="sidebar">
   <div id="header">
@@ -160,7 +237,7 @@
 
   <div id="status">&#x23F3; Python wird geladen &hellip;</div>
 
-  <div class="panel-label">Python Code <span style="color:#484f58;font-size:0.9em">(Ctrl+Enter zum Ausf&#xFC;hren)</span></div>
+  <div class="panel-label">Python Code <span style="color:#484f58;font-size:.9em">(Ctrl+Enter)</span></div>
   <textarea id="editor" spellcheck="false"># Marker hinzuf&#xFC;gen
 map_add_marker(48.1351, 11.5820, "M&#xFC;nchen &#x1F3D9;")
 map_add_marker(52.5200, 13.4050, "Berlin &#x1F3DB;")
@@ -168,43 +245,64 @@ map_add_marker(53.5753, 10.0153, "Hamburg &#x2693;")
 print("3 St&#xE4;dte hinzugef&#xFC;gt!")</textarea>
 
   <div id="btn-row">
-    <button id="run-btn" disabled>&#x25B6;&nbsp; Ausf&#xFC;hren</button>
-    <button id="clear-btn" onclick="clearMap()">&#x1F5D1; Karte</button>
+    <button id="run-btn" disabled>&#x25B6; Ausf&#xFC;hren</button>
+    <button class="icon-btn" onclick="clearMap()">&#x1F5D1; Karte</button>
+    <button class="icon-btn" onclick="clearOutput()">&#x1F5D1; Log</button>
   </div>
 
   <div class="panel-label">Beispiele</div>
   <div id="examples">
     <span class="ex-btn" onclick="loadEx('cities')">&#x1F3D9; St&#xE4;dte</span>
     <span class="ex-btn" onclick="loadEx('circles')">&#x2B55; Kreise</span>
+    <span class="ex-btn" onclick="loadEx('polyline')">&#x1F4CD; Route</span>
     <span class="ex-btn" onclick="loadEx('distance')">&#x1F4CF; Distanz</span>
-    <span class="ex-btn" onclick="loadEx('heatmap')">&#x1F525; Punkte</span>
+    <span class="ex-btn" onclick="loadEx('numpy')">&#x1F9EE; numpy</span>
     <span class="ex-btn" onclick="loadEx('geojson')">&#x1F4E6; GeoJSON</span>
   </div>
 
-  <div class="panel-label">Ausgabe</div>
+  <div class="panel-label">Ausgabe &amp; Klick-Koordinaten</div>
   <div id="output"><span class="out-info">Bereit. Python wird initialisiert &hellip;</span></div>
 </div>
 
 <script>
-// ── Leaflet ──────────────────────────────────────────────────────────────────
+// ── Tile Layers ────────────────────────────────────────────────────────────────
+const TILES = {
+  osm:       ['https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', '&copy; OpenStreetMap contributors'],
+  topo:      ['https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',   '&copy; OpenTopoMap'],
+  satellite: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', '&copy; Esri'],
+  dark:      ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', '&copy; CartoDB'],
+};
+
 const map = L.map('map').setView([51.1657, 10.4515], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-}).addTo(map);
+let tileLayer = L.tileLayer(...TILES.osm).addTo(map);
+
+document.getElementById('tile-select').addEventListener('change', e => {
+  map.removeLayer(tileLayer);
+  tileLayer = L.tileLayer(...TILES[e.target.value]).addTo(map);
+});
 
 const _layers = [];
 
+// ── JS Bridge ─────────────────────────────────────────────────────────────────
 window.map_add_marker = (lat, lng, label = '') => {
   const m = L.marker([lat, lng]).addTo(map);
   if (label) m.bindPopup(String(label));
   _layers.push(m);
-  return `Marker bei ${lat}, ${lng}`;
+  return `Marker @ ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 };
 
 window.map_add_circle = (lat, lng, radius = 5000, color = '#e94560', fillOpacity = 0.15) => {
   const c = L.circle([lat, lng], { radius, color, fillOpacity }).addTo(map);
   _layers.push(c);
-  return `Kreis r=${radius}m bei ${lat}, ${lng}`;
+  return `Kreis r=${radius}m @ ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+};
+
+window.map_add_polyline = (coordsJson, color = '#58a6ff', weight = 3) => {
+  const coords = JSON.parse(coordsJson);
+  const pl = L.polyline(coords, { color, weight }).addTo(map);
+  _layers.push(pl);
+  map.fitBounds(pl.getBounds(), { padding: [30, 30] });
+  return `Polyline mit ${coords.length} Punkten`;
 };
 
 window.map_add_polygon = (coordsJson, color = '#58a6ff') => {
@@ -212,19 +310,6 @@ window.map_add_polygon = (coordsJson, color = '#58a6ff') => {
   const p = L.polygon(coords, { color }).addTo(map);
   _layers.push(p);
   return 'Polygon gezeichnet';
-};
-
-window.map_clear = () => {
-  _layers.forEach(l => map.removeLayer(l));
-  _layers.length = 0;
-  return 'Karte geleert';
-};
-
-window.clearMap = () => { map.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.Circle || l instanceof L.Polygon) map.removeLayer(l); }); _layers.length = 0; };
-
-window.map_fly_to = (lat, lng, zoom = 10) => {
-  map.flyTo([lat, lng], zoom);
-  return `Fliege zu ${lat}, ${lng}`;
 };
 
 window.map_add_geojson = (jsonStr, color = '#58a6ff') => {
@@ -236,7 +321,69 @@ window.map_add_geojson = (jsonStr, color = '#58a6ff') => {
   } catch(e) { return 'GeoJSON Fehler: ' + e.message; }
 };
 
-// ── Output ───────────────────────────────────────────────────────────────────
+window.map_clear = () => {
+  _layers.forEach(l => map.removeLayer(l));
+  _layers.length = 0;
+  return 'Karte geleert';
+};
+
+window.clearMap = window.map_clear;
+
+window.map_fly_to = (lat, lng, zoom = 10) => {
+  map.flyTo([lat, lng], zoom);
+  return `Fliege zu ${lat}, ${lng}`;
+};
+
+window.map_get_bounds = () => {
+  const b = map.getBounds();
+  return JSON.stringify({
+    north: +b.getNorth().toFixed(5), south: +b.getSouth().toFixed(5),
+    east:  +b.getEast().toFixed(5),  west:  +b.getWest().toFixed(5)
+  });
+};
+
+// ── Click Coordinates ─────────────────────────────────────────────────────────
+const toast = document.getElementById('coord-toast');
+let toastTimer;
+
+map.on('click', e => {
+  const lat = e.latlng.lat.toFixed(6);
+  const lng = e.latlng.lng.toFixed(6);
+  const text = `${lat}, ${lng}`;
+
+  toast.textContent = '📍 ' + text + '  (kopiert)';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+
+  navigator.clipboard?.writeText(text).catch(() => {});
+  log(`📍 Klick: lat=${lat}, lng=${lng}`, 'out-click');
+});
+
+// ── Geocoding (Nominatim) ──────────────────────────────────────────────────────
+async function geocode(query) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+  try {
+    const res = await fetch(url, { headers: { 'Accept-Language': 'de' } });
+    const data = await res.json();
+    if (!data.length) { log('Kein Ergebnis für: ' + query, 'out-error'); return; }
+    const { lat, lon, display_name } = data[0];
+    map.flyTo([+lat, +lon], 13);
+    const m = L.marker([+lat, +lon]).addTo(map).bindPopup(display_name).openPopup();
+    _layers.push(m);
+    log('🔍 ' + display_name, 'out-info');
+  } catch(e) { log('Geocoding Fehler: ' + e.message, 'out-error'); }
+}
+
+document.getElementById('search-btn').addEventListener('click', () => {
+  const q = document.getElementById('search-input').value.trim();
+  if (q) geocode(q);
+});
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('search-btn').click();
+});
+
+// ── Output ─────────────────────────────────────────────────────────────────────
 const outputEl = document.getElementById('output');
 
 function log(text, cls = '') {
@@ -249,7 +396,7 @@ function log(text, cls = '') {
 
 function clearOutput() { outputEl.innerHTML = ''; }
 
-// ── Pyodide ──────────────────────────────────────────────────────────────────
+// ── Pyodide ───────────────────────────────────────────────────────────────────
 let pyodide = null;
 
 async function initPyodide() {
@@ -260,41 +407,52 @@ async function initPyodide() {
     pyodide.setStderr({ batched: t => log(t, 'out-error') });
 
     await pyodide.runPythonAsync(`
-import js, json, math
+import js, json as _json, math
+import micropip
 
 def map_add_marker(lat, lng, label=''):
-    return str(js.map_add_marker(lat, lng, str(label)))
+    return str(js.map_add_marker(float(lat), float(lng), str(label)))
 
 def map_add_circle(lat, lng, radius=5000, color='#e94560', fill_opacity=0.15):
-    return str(js.map_add_circle(lat, lng, radius, color, fill_opacity))
+    return str(js.map_add_circle(float(lat), float(lng), float(radius), color, float(fill_opacity)))
+
+def map_add_polyline(coords, color='#58a6ff', weight=3):
+    return str(js.map_add_polyline(_json.dumps([[float(a),float(b)] for a,b in coords]), color, int(weight)))
 
 def map_add_polygon(coords, color='#58a6ff'):
-    return str(js.map_add_polygon(json.dumps(coords), color))
+    return str(js.map_add_polygon(_json.dumps([[float(a),float(b)] for a,b in coords]), color))
+
+def map_add_geojson(data, color='#58a6ff'):
+    s = _json.dumps(data) if isinstance(data,(dict,list)) else str(data)
+    return str(js.map_add_geojson(s, color))
 
 def map_clear():
     return str(js.map_clear())
 
 def map_fly_to(lat, lng, zoom=10):
-    return str(js.map_fly_to(lat, lng, zoom))
+    return str(js.map_fly_to(float(lat), float(lng), int(zoom)))
 
-def map_add_geojson(data, color='#58a6ff'):
-    s = json.dumps(data) if isinstance(data, (dict, list)) else str(data)
-    return str(js.map_add_geojson(s, color))
+def map_get_bounds():
+    return _json.loads(js.map_get_bounds())
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371.0
-    d = lambda x: math.radians(x)
-    a = math.sin(d(lat2-lat1)/2)**2 + math.cos(d(lat1))*math.cos(d(lat2))*math.sin(d(lon2-lon1)/2)**2
+    r = math.radians
+    a = math.sin(r(lat2-lat1)/2)**2 + math.cos(r(lat1))*math.cos(r(lat2))*math.sin(r(lon2-lon1)/2)**2
     return round(R * 2 * math.asin(math.sqrt(a)), 1)
 
-print('Python bereit ✓')
+print('Python bereit ✓  |  micropip verfügbar ✓')
+print('Tipp: await micropip.install("numpy") zum Installieren von Paketen')
 `);
 
     statusEl.textContent = '✅ Python bereit (Pyodide ' + pyodide.version + ')';
     statusEl.className = 'ready';
     document.getElementById('run-btn').disabled = false;
+
     log('Pyodide geladen ✓', 'out-info');
-    log('Funktionen: map_add_marker, map_add_circle, map_add_polygon, map_add_geojson, map_clear, map_fly_to, haversine', 'out-info');
+    log('map_add_marker | map_add_circle | map_add_polyline | map_add_polygon', 'out-info');
+    log('map_add_geojson | map_clear | map_fly_to | map_get_bounds | haversine', 'out-info');
+    log('Auf Karte klicken → Koordinaten kopieren', 'out-info');
   } catch (err) {
     statusEl.textContent = '❌ Fehler beim Laden von Python';
     statusEl.className = 'error';
@@ -302,15 +460,19 @@ print('Python bereit ✓')
   }
 }
 
-// ── Run ──────────────────────────────────────────────────────────────────────
+// ── Run Button ────────────────────────────────────────────────────────────────
 document.getElementById('run-btn').addEventListener('click', async () => {
   const code = document.getElementById('editor').value;
   clearOutput();
   log('▶ Starte...', 'out-info');
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
   try {
     await pyodide.runPythonAsync(code);
   } catch (err) {
     log(err.message, 'out-error');
+  } finally {
+    btn.disabled = false;
   }
 });
 
@@ -321,8 +483,8 @@ document.getElementById('editor').addEventListener('keydown', e => {
   }
   if (e.key === 'Tab') {
     e.preventDefault();
-    const t = e.target, s = t.selectionStart, end = t.selectionEnd;
-    t.value = t.value.substring(0, s) + '    ' + t.value.substring(end);
+    const t = e.target, s = t.selectionStart;
+    t.value = t.value.substring(0, s) + '    ' + t.value.substring(t.selectionEnd);
     t.selectionStart = t.selectionEnd = s + 4;
   }
 });
@@ -331,12 +493,12 @@ document.getElementById('editor').addEventListener('keydown', e => {
 const EXAMPLES = {
   cities: `# Deutsche Großstädte
 städte = [
-    (52.5200, 13.4050, "Berlin ἽB"),
-    (48.1351, 11.5820, "München ἷA"),
+    (52.5200, 13.4050, "Berlin 🏛"),
+    (48.1351, 11.5820, "München 🍺"),
     (53.5753, 10.0153, "Hamburg ⚓"),
-    (51.2217,  6.7762, "Düsseldorf Ἲ8"),
-    (50.9333,  6.9500, "Köln Ἷ0"),
-    (49.4521,  7.7491, "Kaiserslautern ⚽"),
+    (51.2217,  6.7762, "Düsseldorf 🎨"),
+    (50.9333,  6.9500, "Köln 🏰"),
+    (50.1109,  8.6821, "Frankfurt ✈"),
 ]
 map_clear()
 for lat, lng, name in städte:
@@ -353,7 +515,22 @@ map_add_marker(*fra, "Frankfurt ✈")
 map_fly_to(*fra, 6)
 print("Kreise: 50 / 100 / 200 km")`,
 
-  distance: `# Luftlinien berechnen
+  polyline: `# Route: Berlin → München → Zürich
+map_clear()
+route = [
+    (52.5200, 13.4050),  # Berlin
+    (51.3397, 12.3731),  # Leipzig
+    (50.0755, 14.4378),  # Prag
+    (48.1351, 11.5820),  # München
+    (47.3769, 8.5417),   # Zürich
+]
+for i, (lat, lng) in enumerate(route):
+    labels = ["Berlin","Leipzig","Prag","München","Zürich"]
+    map_add_marker(lat, lng, labels[i])
+map_add_polyline(route, color='#58a6ff', weight=4)
+print(f"Route mit {len(route)} Punkten gezeichnet")`,
+
+  distance: `# Luftlinien + Verbindungslinien
 staedte = {
     "Berlin":  (52.52, 13.405),
     "München": (48.135, 11.582),
@@ -370,19 +547,26 @@ print(f"Entfernungen ab {origin}:")
 for name, pos in staedte.items():
     if name != origin:
         d = haversine(*o, *pos)
+        map_add_polyline([o, pos], color='#8b949e', weight=1)
         print(f"  → {name}: {d} km")`,
 
-  heatmap: `# Zufällige Punkte um Deutschland
-import random
-map_clear()
-for _ in range(60):
-    lat = random.uniform(47.3, 55.0)
-    lng = random.uniform(6.0, 15.0)
-    map_add_circle(lat, lng, radius=8000, color='#58a6ff', fill_opacity=0.4)
-map_fly_to(51.2, 10.4, 6)
-print("60 zufällige Punkte gezeichnet!")`,
+  numpy: `# numpy via micropip installieren
+await micropip.install('numpy')
+import numpy as np
 
-  geojson: `# GeoJSON Rechteck
+map_clear()
+# Spirale aus Punkten berechnen
+t = np.linspace(0, 4 * np.pi, 80)
+lats = 51.0 + t * 0.8 * np.cos(t) / (2 * np.pi)
+lngs = 10.0 + t * 1.5 * np.sin(t) / (2 * np.pi)
+
+coords = list(zip(lats.tolist(), lngs.tolist()))
+map_add_polyline(coords, color='#e94560', weight=2)
+map_fly_to(51.5, 10.5, 6)
+print(f"numpy {np.__version__} ✓")
+print(f"Spirale mit {len(coords)} Punkten gezeichnet")`,
+
+  geojson: `# GeoJSON Feature
 import json
 map_clear()
 geojson = {
@@ -392,11 +576,10 @@ geojson = {
         "geometry": {
             "type": "Polygon",
             "coordinates": [[
-                [6.0, 47.5],[15.0, 47.5],
-                [15.0, 55.1],[6.0, 55.1],[6.0, 47.5]
+                [6.0,47.5],[15.0,47.5],
+                [15.0,55.1],[6.0,55.1],[6.0,47.5]
             ]]
-        },
-        "properties": {"name": "Deutschland-Umriss (vereinfacht)"}
+        }
     }]
 }
 map_add_geojson(geojson, color='#58a6ff')
