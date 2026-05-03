@@ -1,597 +1,339 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MapMVP</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Interval Timer">
+  <title>Interval Timer</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #0d1117; color: #c9d1d9; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* MAP WRAPPER */
-    #map-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-
-    /* SEARCH BAR */
-    #search-bar {
-      display: flex;
-      gap: 6px;
-      padding: 8px 10px;
-      background: #161b22;
-      border-bottom: 1px solid #30363d;
-      z-index: 999;
-    }
-    #search-input {
-      flex: 1;
-      padding: 7px 11px;
-      background: #0d1117;
-      color: #c9d1d9;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      font-size: 13px;
-      outline: none;
-    }
-    #search-input:focus { border-color: #58a6ff; }
-    #search-btn {
-      padding: 7px 14px;
-      background: #1f6feb;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
       color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    #search-btn:hover { background: #388bfd; }
-    #tile-select {
-      padding: 7px 8px;
-      background: #0d1117;
-      color: #c9d1d9;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    #map { flex: 1; }
-
-    /* CLICK TOAST */
-    #coord-toast {
-      position: absolute;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(13,17,23,0.92);
-      color: #79c0ff;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-family: monospace;
-      border: 1px solid #30363d;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity .25s;
-      z-index: 1000;
-      white-space: nowrap;
-    }
-    #coord-toast.show { opacity: 1; }
-
-    /* SIDEBAR */
-    #sidebar {
-      width: 380px;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      background: #161b22;
-      border-left: 1px solid #30363d;
-      overflow: hidden;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 32px;
     }
 
-    #header {
-      padding: 12px 18px;
-      background: #0f3460;
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    .phase-label {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-height: 1.8rem;
+      transition: color 0.3s;
+    }
+
+    .phase-label.work  { color: #4ade80; }
+    .phase-label.rest  { color: #60a5fa; }
+    .phase-label.idle  { color: #555; }
+
+    .timer-ring {
+      position: relative;
+      width: 220px;
+      height: 220px;
+    }
+
+    .timer-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: #222;
+      stroke-width: 12;
+    }
+
+    .ring-progress {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.4s linear, stroke 0.3s;
+    }
+
+    .timer-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .time-display {
+      font-size: 3.8rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    .round-display {
+      font-size: 0.85rem;
+      color: #666;
+      letter-spacing: 0.06em;
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .setting-block {
+      background: #1a1a1a;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .setting-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .setting-label.work { color: #4ade80; }
+    .setting-label.rest { color: #60a5fa; }
+
+    .setting-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      min-width: 3ch;
+      text-align: center;
+    }
+
+    .setting-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .adj-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    #header h1 { font-size: 1.2rem; color: #58a6ff; letter-spacing: 1px; }
-    #header small { font-size: 0.68rem; color: #8b949e; }
-
-    #status {
-      padding: 5px 18px;
-      font-size: 0.72rem;
-      color: #8b949e;
-      background: #0d1117;
-      border-bottom: 1px solid #21262d;
-      flex-shrink: 0;
-    }
-    #status.ready { color: #3fb950; }
-    #status.error  { color: #f85149; }
-
-    .panel-label {
-      padding: 9px 18px 4px;
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #8b949e;
-      flex-shrink: 0;
-    }
-
-    #editor {
-      margin: 0 10px;
-      height: 200px;
-      background: #0d1117;
-      color: #c9d1d9;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 10px 12px;
-      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-      font-size: 12px;
-      resize: none;
-      outline: none;
-      tab-size: 4;
-      line-height: 1.55;
-      flex-shrink: 0;
-    }
-    #editor:focus { border-color: #58a6ff; }
-
-    #btn-row {
-      display: flex;
-      gap: 6px;
-      margin: 7px 10px;
-      flex-shrink: 0;
-    }
-    #run-btn {
-      flex: 1;
-      padding: 8px;
-      background: #238636;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    #run-btn:hover:not(:disabled) { background: #2ea043; }
-    #run-btn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
-
-    .icon-btn {
-      padding: 8px 11px;
-      background: #21262d;
-      color: #c9d1d9;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background .15s;
-      white-space: nowrap;
-    }
-    .icon-btn:hover { background: #30363d; }
-
-    #examples {
-      margin: 0 10px 4px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      flex-shrink: 0;
-    }
-    .ex-btn {
-      padding: 3px 9px;
-      background: #0f3460;
-      color: #79c0ff;
-      border: 1px solid #1f4e8a;
-      border-radius: 12px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: background .15s;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
       user-select: none;
     }
-    .ex-btn:hover { background: #1f4e8a; }
 
-    #output {
-      margin: 0 10px 10px;
-      flex: 1;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      padding: 9px 12px;
-      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-      font-size: 11px;
-      overflow-y: auto;
-      line-height: 1.55;
-      min-height: 80px;
+    .adj-btn:active { background: #3a3a3a; transform: scale(0.92); }
+
+    .start-btn {
+      width: 100%;
+      max-width: 320px;
+      height: 64px;
+      border-radius: 20px;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
-    .out-info    { color: #79c0ff; }
-    .out-success { color: #3fb950; }
-    .out-error   { color: #f85149; }
-    .out-click   { color: #e3b341; }
+
+    .start-btn.start {
+      background: #4ade80;
+      color: #0f0f0f;
+    }
+
+    .start-btn.stop {
+      background: #f87171;
+      color: #0f0f0f;
+    }
+
+    .start-btn:active { transform: scale(0.97); }
+
+    .nav-link {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: #1a1a1a;
+      color: #888;
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      border: 1px solid #2a2a2a;
+    }
+    .nav-link:hover { color: #fff; }
   </style>
 </head>
 <body>
 
-<div id="map-wrap">
-  <div id="search-bar">
-    <input id="search-input" type="text" placeholder="Adresse oder Ort suchen..." />
-    <button id="search-btn">&#x1F50D; Suchen</button>
-    <select id="tile-select">
-      <option value="osm">OSM Standard</option>
-      <option value="topo">Topo</option>
-      <option value="satellite">Satellite</option>
-      <option value="dark">Dark</option>
-    </select>
-  </div>
-  <div id="map"></div>
-  <div id="coord-toast"></div>
-</div>
+  <h1>Interval Timer</h1>
 
-<div id="sidebar">
-  <div id="header">
-    <div>
-      <h1>&#x1F5FA; MapMVP</h1>
-      <small>Leaflet &plus; Python (Pyodide)</small>
+  <div class="phase-label idle" id="phaseLabel">—</div>
+
+  <div class="timer-ring">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle class="ring-bg" cx="110" cy="110" r="98"/>
+      <circle class="ring-progress" id="ringProgress" cx="110" cy="110" r="98"/>
+    </svg>
+    <div class="timer-center">
+      <div class="time-display" id="timeDisplay">—</div>
+      <div class="round-display" id="roundDisplay"></div>
     </div>
   </div>
 
-  <div id="status">&#x23F3; Python wird geladen &hellip;</div>
-
-  <div class="panel-label">Python Code <span style="color:#484f58;font-size:.9em">(Ctrl+Enter)</span></div>
-  <textarea id="editor" spellcheck="false"># Marker hinzuf&#xFC;gen
-map_add_marker(48.1351, 11.5820, "M&#xFC;nchen &#x1F3D9;")
-map_add_marker(52.5200, 13.4050, "Berlin &#x1F3DB;")
-map_add_marker(53.5753, 10.0153, "Hamburg &#x2693;")
-print("3 St&#xE4;dte hinzugef&#xFC;gt!")</textarea>
-
-  <div id="btn-row">
-    <button id="run-btn" disabled>&#x25B6; Ausf&#xFC;hren</button>
-    <button class="icon-btn" onclick="clearMap()">&#x1F5D1; Karte</button>
-    <button class="icon-btn" onclick="clearOutput()">&#x1F5D1; Log</button>
+  <div class="settings">
+    <div class="setting-block">
+      <div class="setting-label work">Arbeit</div>
+      <div class="setting-controls">
+        <button class="adj-btn" onclick="adjust('work', -5)">−</button>
+        <div class="setting-value" id="workVal">60</div>
+        <button class="adj-btn" onclick="adjust('work', +5)">+</button>
+      </div>
+      <div style="font-size:0.7rem;color:#555;">Sekunden</div>
+    </div>
+    <div class="setting-block">
+      <div class="setting-label rest">Pause</div>
+      <div class="setting-controls">
+        <button class="adj-btn" onclick="adjust('rest', -5)">−</button>
+        <div class="setting-value" id="restVal">25</div>
+        <button class="adj-btn" onclick="adjust('rest', +5)">+</button>
+      </div>
+      <div style="font-size:0.7rem;color:#555;">Sekunden</div>
+    </div>
   </div>
 
-  <div class="panel-label">Beispiele</div>
-  <div id="examples">
-    <span class="ex-btn" onclick="loadEx('cities')">&#x1F3D9; St&#xE4;dte</span>
-    <span class="ex-btn" onclick="loadEx('circles')">&#x2B55; Kreise</span>
-    <span class="ex-btn" onclick="loadEx('polyline')">&#x1F4CD; Route</span>
-    <span class="ex-btn" onclick="loadEx('distance')">&#x1F4CF; Distanz</span>
-    <span class="ex-btn" onclick="loadEx('numpy')">&#x1F9EE; numpy</span>
-    <span class="ex-btn" onclick="loadEx('geojson')">&#x1F4E6; GeoJSON</span>
-  </div>
+  <button class="start-btn start" id="startBtn" onclick="toggle()">START</button>
 
-  <div class="panel-label">Ausgabe &amp; Klick-Koordinaten</div>
-  <div id="output"><span class="out-info">Bereit. Python wird initialisiert &hellip;</span></div>
-</div>
+  <a class="nav-link" href="./mapmvp/">🗺 MapMVP</a>
 
-<script>
-// ── Tile Layers ────────────────────────────────────────────────────────────────
-const TILES = {
-  osm:       ['https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', '&copy; OpenStreetMap contributors'],
-  topo:      ['https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',   '&copy; OpenTopoMap'],
-  satellite: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', '&copy; Esri'],
-  dark:      ['https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', '&copy; CartoDB'],
-};
+  <script>
+    const CIRCUMFERENCE = 2 * Math.PI * 98;
 
-const map = L.map('map').setView([51.1657, 10.4515], 6);
-let tileLayer = L.tileLayer(...TILES.osm).addTo(map);
+    let workSec = 60, restSec = 25, running = false;
+    let tickId = null, keepAliveId = null;
+    let phase = 'work', remaining = 0, phaseDuration = 0, round = 0;
+    let audioCtx = null;
 
-document.getElementById('tile-select').addEventListener('change', e => {
-  map.removeLayer(tileLayer);
-  tileLayer = L.tileLayer(...TILES[e.target.value]).addTo(map);
-});
+    const ringProgress = document.getElementById('ringProgress');
+    const timeDisplay  = document.getElementById('timeDisplay');
+    const phaseLabel   = document.getElementById('phaseLabel');
+    const roundDisplay = document.getElementById('roundDisplay');
+    const startBtn     = document.getElementById('startBtn');
 
-const _layers = [];
+    ringProgress.style.strokeDasharray = CIRCUMFERENCE;
 
-// ── JS Bridge ─────────────────────────────────────────────────────────────────
-window.map_add_marker = (lat, lng, label = '') => {
-  const m = L.marker([lat, lng]).addTo(map);
-  if (label) m.bindPopup(String(label));
-  _layers.push(m);
-  return `Marker @ ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-};
+    function setRing(ratio, color) {
+      ringProgress.style.strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
+      ringProgress.style.stroke = color;
+    }
 
-window.map_add_circle = (lat, lng, radius = 5000, color = '#e94560', fillOpacity = 0.15) => {
-  const c = L.circle([lat, lng], { radius, color, fillOpacity }).addTo(map);
-  _layers.push(c);
-  return `Kreis r=${radius}m @ ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-};
+    function formatTime(s) {
+      const m = Math.floor(s / 60), sec = s % 60;
+      return m > 0 ? `${m}:${String(sec).padStart(2,'0')}` : String(sec);
+    }
 
-window.map_add_polyline = (coordsJson, color = '#58a6ff', weight = 3) => {
-  const coords = JSON.parse(coordsJson);
-  const pl = L.polyline(coords, { color, weight }).addTo(map);
-  _layers.push(pl);
-  map.fitBounds(pl.getBounds(), { padding: [30, 30] });
-  return `Polyline mit ${coords.length} Punkten`;
-};
+    function adjust(type, delta) {
+      if (running) return;
+      if (type === 'work') { workSec = Math.max(5, workSec + delta); document.getElementById('workVal').textContent = workSec; }
+      else { restSec = Math.max(5, restSec + delta); document.getElementById('restVal').textContent = restSec; }
+    }
 
-window.map_add_polygon = (coordsJson, color = '#58a6ff') => {
-  const coords = JSON.parse(coordsJson);
-  const p = L.polygon(coords, { color }).addTo(map);
-  _layers.push(p);
-  return 'Polygon gezeichnet';
-};
+    function getAudioCtx() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
 
-window.map_add_geojson = (jsonStr, color = '#58a6ff') => {
-  try {
-    const data = JSON.parse(jsonStr);
-    const layer = L.geoJSON(data, { style: { color, weight: 2 } }).addTo(map);
-    _layers.push(layer);
-    return 'GeoJSON gezeichnet';
-  } catch(e) { return 'GeoJSON Fehler: ' + e.message; }
-};
+    function playTone(ctx, freq, startTime, duration, ramp) {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.4, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + ramp);
+      osc.start(startTime); osc.stop(startTime + duration + ramp + 0.05);
+    }
 
-window.map_clear = () => {
-  _layers.forEach(l => map.removeLayer(l));
-  _layers.length = 0;
-  return 'Karte geleert';
-};
+    function beep(type) {
+      const ctx = getAudioCtx(), now = ctx.currentTime;
+      if (type === 'work') { playTone(ctx,880,now,0.12,0.08); playTone(ctx,880,now+0.18,0.12,0.08); }
+      else if (type === 'rest') playTone(ctx,440,now,0.25,0.12);
+      else if (type === 'countdown') playTone(ctx,660,now,0.06,0.04);
+    }
 
-window.clearMap = window.map_clear;
+    function keepAudioAlive() {
+      const ctx = getAudioCtx(), buf = ctx.createBuffer(1,1,22050), src = ctx.createBufferSource();
+      src.buffer = buf; src.connect(ctx.destination); src.start(0);
+    }
 
-window.map_fly_to = (lat, lng, zoom = 10) => {
-  map.flyTo([lat, lng], zoom);
-  return `Fliege zu ${lat}, ${lng}`;
-};
+    function startPhase(p) {
+      phase = p; phaseDuration = p === 'work' ? workSec : restSec; remaining = phaseDuration;
+      if (p === 'work') { round++; phaseLabel.textContent='ARBEIT'; phaseLabel.className='phase-label work'; beep('work'); }
+      else { phaseLabel.textContent='PAUSE'; phaseLabel.className='phase-label rest'; beep('rest'); }
+      roundDisplay.textContent = `Runde ${round}`;
+      updateDisplay();
+    }
 
-window.map_get_bounds = () => {
-  const b = map.getBounds();
-  return JSON.stringify({
-    north: +b.getNorth().toFixed(5), south: +b.getSouth().toFixed(5),
-    east:  +b.getEast().toFixed(5),  west:  +b.getWest().toFixed(5)
-  });
-};
+    function updateDisplay() {
+      timeDisplay.textContent = formatTime(remaining);
+      setRing(remaining / phaseDuration, phase === 'work' ? '#4ade80' : '#60a5fa');
+      if (remaining <= 3 && remaining > 0) beep('countdown');
+    }
 
-// ── Click Coordinates ─────────────────────────────────────────────────────────
-const toast = document.getElementById('coord-toast');
-let toastTimer;
+    function tick() {
+      if (remaining <= 1) startPhase(phase === 'work' ? 'rest' : 'work');
+      else { remaining--; updateDisplay(); }
+    }
 
-map.on('click', e => {
-  const lat = e.latlng.lat.toFixed(6);
-  const lng = e.latlng.lng.toFixed(6);
-  const text = `${lat}, ${lng}`;
+    function toggle() { running ? stop() : start(); }
 
-  toast.textContent = '📍 ' + text + '  (kopiert)';
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+    function start() {
+      getAudioCtx(); running = true; round = 0;
+      startBtn.textContent = 'STOP'; startBtn.className = 'start-btn stop';
+      startPhase('work');
+      tickId = setInterval(tick, 1000);
+      keepAliveId = setInterval(keepAudioAlive, 20000);
+    }
 
-  navigator.clipboard?.writeText(text).catch(() => {});
-  log(`📍 Klick: lat=${lat}, lng=${lng}`, 'out-click');
-});
+    function stop() {
+      running = false; clearInterval(tickId); clearInterval(keepAliveId); tickId = keepAliveId = null;
+      startBtn.textContent = 'START'; startBtn.className = 'start-btn start';
+      phaseLabel.textContent = '—'; phaseLabel.className = 'phase-label idle';
+      timeDisplay.textContent = '—'; roundDisplay.textContent = '';
+      setRing(1, '#333');
+    }
 
-// ── Geocoding (Nominatim) ──────────────────────────────────────────────────────
-async function geocode(query) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
-  try {
-    const res = await fetch(url, { headers: { 'Accept-Language': 'de' } });
-    const data = await res.json();
-    if (!data.length) { log('Kein Ergebnis für: ' + query, 'out-error'); return; }
-    const { lat, lon, display_name } = data[0];
-    map.flyTo([+lat, +lon], 13);
-    const m = L.marker([+lat, +lon]).addTo(map).bindPopup(display_name).openPopup();
-    _layers.push(m);
-    log('🔍 ' + display_name, 'out-info');
-  } catch(e) { log('Geocoding Fehler: ' + e.message, 'out-error'); }
-}
-
-document.getElementById('search-btn').addEventListener('click', () => {
-  const q = document.getElementById('search-input').value.trim();
-  if (q) geocode(q);
-});
-document.getElementById('search-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('search-btn').click();
-});
-
-// ── Output ─────────────────────────────────────────────────────────────────────
-const outputEl = document.getElementById('output');
-
-function log(text, cls = '') {
-  const d = document.createElement('div');
-  if (cls) d.className = cls;
-  d.textContent = text;
-  outputEl.appendChild(d);
-  outputEl.scrollTop = outputEl.scrollHeight;
-}
-
-function clearOutput() { outputEl.innerHTML = ''; }
-
-// ── Pyodide ───────────────────────────────────────────────────────────────────
-let pyodide = null;
-
-async function initPyodide() {
-  const statusEl = document.getElementById('status');
-  try {
-    pyodide = await loadPyodide();
-    pyodide.setStdout({ batched: t => log(t, 'out-success') });
-    pyodide.setStderr({ batched: t => log(t, 'out-error') });
-
-    await pyodide.runPythonAsync(`
-import js, json as _json, math
-import micropip
-
-def map_add_marker(lat, lng, label=''):
-    return str(js.map_add_marker(float(lat), float(lng), str(label)))
-
-def map_add_circle(lat, lng, radius=5000, color='#e94560', fill_opacity=0.15):
-    return str(js.map_add_circle(float(lat), float(lng), float(radius), color, float(fill_opacity)))
-
-def map_add_polyline(coords, color='#58a6ff', weight=3):
-    return str(js.map_add_polyline(_json.dumps([[float(a),float(b)] for a,b in coords]), color, int(weight)))
-
-def map_add_polygon(coords, color='#58a6ff'):
-    return str(js.map_add_polygon(_json.dumps([[float(a),float(b)] for a,b in coords]), color))
-
-def map_add_geojson(data, color='#58a6ff'):
-    s = _json.dumps(data) if isinstance(data,(dict,list)) else str(data)
-    return str(js.map_add_geojson(s, color))
-
-def map_clear():
-    return str(js.map_clear())
-
-def map_fly_to(lat, lng, zoom=10):
-    return str(js.map_fly_to(float(lat), float(lng), int(zoom)))
-
-def map_get_bounds():
-    return _json.loads(js.map_get_bounds())
-
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371.0
-    r = math.radians
-    a = math.sin(r(lat2-lat1)/2)**2 + math.cos(r(lat1))*math.cos(r(lat2))*math.sin(r(lon2-lon1)/2)**2
-    return round(R * 2 * math.asin(math.sqrt(a)), 1)
-
-print('Python bereit ✓  |  micropip verfügbar ✓')
-print('Tipp: await micropip.install("numpy") zum Installieren von Paketen')
-`);
-
-    statusEl.textContent = '✅ Python bereit (Pyodide ' + pyodide.version + ')';
-    statusEl.className = 'ready';
-    document.getElementById('run-btn').disabled = false;
-
-    log('Pyodide geladen ✓', 'out-info');
-    log('map_add_marker | map_add_circle | map_add_polyline | map_add_polygon', 'out-info');
-    log('map_add_geojson | map_clear | map_fly_to | map_get_bounds | haversine', 'out-info');
-    log('Auf Karte klicken → Koordinaten kopieren', 'out-info');
-  } catch (err) {
-    statusEl.textContent = '❌ Fehler beim Laden von Python';
-    statusEl.className = 'error';
-    log('Fehler: ' + err.message, 'out-error');
-  }
-}
-
-// ── Run Button ────────────────────────────────────────────────────────────────
-document.getElementById('run-btn').addEventListener('click', async () => {
-  const code = document.getElementById('editor').value;
-  clearOutput();
-  log('▶ Starte...', 'out-info');
-  const btn = document.getElementById('run-btn');
-  btn.disabled = true;
-  try {
-    await pyodide.runPythonAsync(code);
-  } catch (err) {
-    log(err.message, 'out-error');
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-document.getElementById('editor').addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    e.preventDefault();
-    document.getElementById('run-btn').click();
-  }
-  if (e.key === 'Tab') {
-    e.preventDefault();
-    const t = e.target, s = t.selectionStart;
-    t.value = t.value.substring(0, s) + '    ' + t.value.substring(t.selectionEnd);
-    t.selectionStart = t.selectionEnd = s + 4;
-  }
-});
-
-// ── Examples ─────────────────────────────────────────────────────────────────
-const EXAMPLES = {
-  cities: `# Deutsche Großstädte
-städte = [
-    (52.5200, 13.4050, "Berlin 🏛"),
-    (48.1351, 11.5820, "München 🍺"),
-    (53.5753, 10.0153, "Hamburg ⚓"),
-    (51.2217,  6.7762, "Düsseldorf 🎨"),
-    (50.9333,  6.9500, "Köln 🏰"),
-    (50.1109,  8.6821, "Frankfurt ✈"),
-]
-map_clear()
-for lat, lng, name in städte:
-    map_add_marker(lat, lng, name)
-map_fly_to(51.2, 10.3, 6)
-print(f"{len(städte)} Städte gezeichnet!")`,
-
-  circles: `# Konzentrische Kreise um Frankfurt
-map_clear()
-fra = (50.1109, 8.6821)
-for r, c in [(50_000,'#2a9d8f'),(100_000,'#e9c46a'),(200_000,'#e94560')]:
-    map_add_circle(*fra, radius=r, color=c)
-map_add_marker(*fra, "Frankfurt ✈")
-map_fly_to(*fra, 6)
-print("Kreise: 50 / 100 / 200 km")`,
-
-  polyline: `# Route: Berlin → München → Zürich
-map_clear()
-route = [
-    (52.5200, 13.4050),  # Berlin
-    (51.3397, 12.3731),  # Leipzig
-    (50.0755, 14.4378),  # Prag
-    (48.1351, 11.5820),  # München
-    (47.3769, 8.5417),   # Zürich
-]
-for i, (lat, lng) in enumerate(route):
-    labels = ["Berlin","Leipzig","Prag","München","Zürich"]
-    map_add_marker(lat, lng, labels[i])
-map_add_polyline(route, color='#58a6ff', weight=4)
-print(f"Route mit {len(route)} Punkten gezeichnet")`,
-
-  distance: `# Luftlinien + Verbindungslinien
-staedte = {
-    "Berlin":  (52.52, 13.405),
-    "München": (48.135, 11.582),
-    "Hamburg": (53.575, 10.015),
-    "Köln":   (50.933,  6.950),
-}
-map_clear()
-for name, (lat, lng) in staedte.items():
-    map_add_marker(lat, lng, name)
-
-origin = "Berlin"
-o = staedte[origin]
-print(f"Entfernungen ab {origin}:")
-for name, pos in staedte.items():
-    if name != origin:
-        d = haversine(*o, *pos)
-        map_add_polyline([o, pos], color='#8b949e', weight=1)
-        print(f"  → {name}: {d} km")`,
-
-  numpy: `# numpy via micropip installieren
-await micropip.install('numpy')
-import numpy as np
-
-map_clear()
-# Spirale aus Punkten berechnen
-t = np.linspace(0, 4 * np.pi, 80)
-lats = 51.0 + t * 0.8 * np.cos(t) / (2 * np.pi)
-lngs = 10.0 + t * 1.5 * np.sin(t) / (2 * np.pi)
-
-coords = list(zip(lats.tolist(), lngs.tolist()))
-map_add_polyline(coords, color='#e94560', weight=2)
-map_fly_to(51.5, 10.5, 6)
-print(f"numpy {np.__version__} ✓")
-print(f"Spirale mit {len(coords)} Punkten gezeichnet")`,
-
-  geojson: `# GeoJSON Feature
-import json
-map_clear()
-geojson = {
-    "type": "FeatureCollection",
-    "features": [{
-        "type": "Feature",
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-                [6.0,47.5],[15.0,47.5],
-                [15.0,55.1],[6.0,55.1],[6.0,47.5]
-            ]]
-        }
-    }]
-}
-map_add_geojson(geojson, color='#58a6ff')
-map_fly_to(51.2, 10.5, 5)
-print("GeoJSON gezeichnet!")`,
-};
-
-window.loadEx = name => {
-  document.getElementById('editor').value = EXAMPLES[name] || '';
-};
-
-initPyodide();
-</script>
+    setRing(1, '#333');
+  </script>
 </body>
 </html>
