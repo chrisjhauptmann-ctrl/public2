@@ -545,6 +545,8 @@
     let gRunning=false,gOver=false,gScore=0,gHi=0,gSpeed=4,gFrame=0,gAnimId=null;
     let px=55,py=GND,pvy=0,pOnGround=true,pLeg=0,pLegT=0;
     let obs=[],obsT=0,obsInt=90;
+    let bikes=[],bikeT=0,bikeInt=180;
+    let birds=[],birdT=0,birdInt=150;
     let clouds=[{x:80,y:28,w:50},{x:220,y:18,w:38},{x:310,y:34,w:44}];
 
     function openGame() {
@@ -561,6 +563,8 @@
     function startGame() {
       gRunning=true; gOver=false; gScore=0; gSpeed=4; gFrame=0;
       py=GND; pvy=0; pOnGround=true; pLeg=0; pLegT=0;
+      bikes=[]; bikeT=0; bikeInt=180;
+      birds=[]; birdT=0; birdInt=150;
       obs=[]; obsT=0; obsInt=90;
       document.getElementById('gameHint').textContent='Tippen zum Springen!';
       if (gAnimId) cancelAnimationFrame(gAnimId);
@@ -618,10 +622,45 @@
       ctx.beginPath(); ctx.ellipse(c.x+c.w*.22,c.y+4,c.w*.28,6,0,0,Math.PI*2); ctx.fill();
     }
 
+    function drawBike(ctx, x) {
+      const r=11, wy=GND-r;
+      ctx.save(); ctx.strokeStyle='#fb923c'; ctx.lineWidth=2; ctx.lineCap='round';
+      ctx.beginPath(); ctx.arc(x-13,wy,r,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x+13,wy,r,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x-13,wy); ctx.lineTo(x,wy-13); ctx.lineTo(x+13,wy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,wy-13); ctx.lineTo(x-9,wy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+13,wy); ctx.lineTo(x+9,wy-15); ctx.lineTo(x+15,wy-15); ctx.stroke();
+      // Rider
+      ctx.beginPath(); ctx.arc(x+5,wy-28,5,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,wy-13); ctx.lineTo(x+5,wy-23); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+5,wy-23); ctx.lineTo(x+12,wy-15); ctx.stroke();
+      ctx.fillStyle='#fb923c'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Chris', x, GND-r*2-22);
+      ctx.restore();
+    }
+
+    function drawBird(ctx, x, y) {
+      ctx.save(); ctx.strokeStyle='#f472b6'; ctx.lineWidth=2.5; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(x-14,y); ctx.quadraticCurveTo(x-7,y-9,x,y);
+      ctx.quadraticCurveTo(x+7,y-9,x+14,y); ctx.stroke();
+      ctx.fillStyle='#f472b6'; ctx.beginPath(); ctx.arc(x,y,2,0,Math.PI*2); ctx.fill();
+      ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Anika', x, y-13);
+      ctx.restore();
+    }
+
     function hitTest(o) {
       const pl=px-10,pr=px+10,pt=py-32,pb=py;
       const ol=o.x+2,or2=o.x+o.w-2,ot=GND-o.h;
       return pl<or2&&pr>ol&&pt<GND&&pb>ot;
+    }
+
+    function hitTestBike(bx) {
+      return px+10>bx-11 && px-10<bx+11 && py>GND-24 && py-32<GND;
+    }
+
+    function hitTestBird(bx, by) {
+      return px+8>bx-12 && px-8<bx+12 && py-32<by+5 && py>by-9;
     }
 
     function gameLoop() {
@@ -668,6 +707,33 @@
         drawObstacle(ctx,obs[i]);
         if (hitTest(obs[i])) { endGame(ctx); return; }
         if (obs[i].x+obs[i].w<0) obs.splice(i,1);
+      }
+
+      // Chris bikes
+      bikeT++;
+      if (bikeT >= bikeInt) {
+        bikes.push({ x: GW+30 });
+        bikeT=0; bikeInt=Math.max(100, 180-Math.floor(gScore/400)*10);
+      }
+      for (let i=bikes.length-1;i>=0;i--) {
+        bikes[i].x -= gSpeed + 1.5;
+        drawBike(ctx, bikes[i].x);
+        if (hitTestBike(bikes[i].x)) { endGame(ctx); return; }
+        if (bikes[i].x < -40) bikes.splice(i,1);
+      }
+
+      // Anika birds
+      birdT++;
+      if (birdT >= birdInt) {
+        const birdY = GND - 48 - Math.random()*18;
+        birds.push({ x: GW+20, y: birdY });
+        birdT=0; birdInt=Math.max(90, 150-Math.floor(gScore/400)*8);
+      }
+      for (let i=birds.length-1;i>=0;i--) {
+        birds[i].x -= gSpeed;
+        drawBird(ctx, birds[i].x, birds[i].y);
+        if (hitTestBird(birds[i].x, birds[i].y)) { endGame(ctx); return; }
+        if (birds[i].x < -40) birds.splice(i,1);
       }
 
       gScore++; gSpeed=4+Math.floor(gScore/200)*0.4;
