@@ -50,9 +50,7 @@
       height: 220px;
     }
 
-    .timer-ring svg {
-      transform: rotate(-90deg);
-    }
+    .timer-ring svg { transform: rotate(-90deg); }
 
     .ring-bg {
       fill: none;
@@ -168,17 +166,90 @@
       touch-action: manipulation;
     }
 
-    .start-btn.start {
-      background: #4ade80;
-      color: #0f0f0f;
-    }
-
-    .start-btn.stop {
-      background: #f87171;
-      color: #0f0f0f;
-    }
-
+    .start-btn.start { background: #4ade80; color: #0f0f0f; }
+    .start-btn.stop  { background: #f87171; color: #0f0f0f; }
     .start-btn:active { transform: scale(0.97); }
+
+    .game-launch-btn {
+      width: 100%;
+      max-width: 320px;
+      height: 48px;
+      border-radius: 16px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: #a78bfa;
+      color: #0f0f0f;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .game-launch-btn:active { transform: scale(0.97); background: #c4b5fd; }
+
+    /* Game Overlay */
+    #gameOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0f0f0f;
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
+    }
+
+    #gameOverlay.active { display: flex; }
+
+    .game-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #a78bfa;
+    }
+
+    #gameCanvas {
+      border-radius: 14px;
+      background: #111;
+      touch-action: none;
+      width: min(360px, 100%);
+      height: auto;
+      display: block;
+    }
+
+    .game-hint {
+      font-size: 0.8rem;
+      color: #444;
+      letter-spacing: 0.06em;
+      min-height: 1.1rem;
+      text-align: center;
+    }
+
+    .back-btn {
+      height: 48px;
+      padding: 0 32px;
+      border-radius: 16px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: #2a2a2a;
+      color: #fff;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .back-btn:active { background: #3a3a3a; transform: scale(0.97); }
   </style>
 </head>
 <body>
@@ -221,20 +292,23 @@
 
   <button class="start-btn start" id="startBtn" onclick="toggle()">START</button>
 
-  <script>
-    const CIRCUMFERENCE = 2 * Math.PI * 98;
+  <button class="game-launch-btn" onclick="openGame()">HAUKE RUNNER</button>
 
-    let workSec = 60;
-    let restSec = 25;
-    let running = false;
-    let intervalId = null;
-    let tickId = null;
-    let phase = 'work';
-    let remaining = 0;
-    let phaseDuration = 0;
-    let round = 0;
+  <!-- Game Overlay -->
+  <div id="gameOverlay">
+    <div class="game-title">Hauke Runner</div>
+    <canvas id="gameCanvas" width="360" height="180"></canvas>
+    <div class="game-hint" id="gameHint">Tippen zum Springen!</div>
+    <button class="back-btn" onclick="closeGame()">← ZURÜCK</button>
+  </div>
+
+  <script>
+    /* INTERVAL TIMER */
+    const CIRCUMFERENCE = 2 * Math.PI * 98;
+    let workSec = 60, restSec = 25;
+    let running = false, tickId = null, keepAliveId = null;
+    let phase = 'work', remaining = 0, phaseDuration = 0, round = 0;
     let audioCtx = null;
-    let keepAliveId = null;
 
     const ringProgress = document.getElementById('ringProgress');
     const timeDisplay  = document.getElementById('timeDisplay');
@@ -245,149 +319,237 @@
     ringProgress.style.strokeDasharray = CIRCUMFERENCE;
 
     function setRing(ratio, color) {
-      const offset = CIRCUMFERENCE * (1 - ratio);
-      ringProgress.style.strokeDashoffset = offset;
+      ringProgress.style.strokeDashoffset = CIRCUMFERENCE * (1 - ratio);
       ringProgress.style.stroke = color;
     }
 
     function formatTime(s) {
-      const m = Math.floor(s / 60);
-      const sec = s % 60;
-      return m > 0
-        ? `${m}:${String(sec).padStart(2, '0')}`
-        : String(sec);
+      const m = Math.floor(s / 60), sec = s % 60;
+      return m > 0 ? `${m}:${String(sec).padStart(2,'0')}` : String(sec);
     }
 
     function adjust(type, delta) {
       if (running) return;
-      if (type === 'work') {
-        workSec = Math.max(5, workSec + delta);
-        document.getElementById('workVal').textContent = workSec;
-      } else {
-        restSec = Math.max(5, restSec + delta);
-        document.getElementById('restVal').textContent = restSec;
-      }
+      if (type === 'work') { workSec = Math.max(5, workSec + delta); document.getElementById('workVal').textContent = workSec; }
+      else { restSec = Math.max(5, restSec + delta); document.getElementById('restVal').textContent = restSec; }
     }
 
     function getAudioCtx() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
       return audioCtx;
     }
 
-    function beep(type) {
-      const ctx = getAudioCtx();
-      const now = ctx.currentTime;
-
-      if (type === 'work') {
-        playTone(ctx, 880, now,        0.12, 0.08);
-        playTone(ctx, 880, now + 0.18, 0.12, 0.08);
-      } else if (type === 'rest') {
-        playTone(ctx, 440, now, 0.25, 0.12);
-      } else if (type === 'countdown') {
-        playTone(ctx, 660, now, 0.06, 0.04);
-      }
-    }
-
     function playTone(ctx, freq, startTime, duration, ramp) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = freq;
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.4, startTime);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + ramp);
-      osc.start(startTime);
-      osc.stop(startTime + duration + ramp + 0.05);
+      osc.start(startTime); osc.stop(startTime + duration + ramp + 0.05);
+    }
+
+    function beep(type) {
+      const ctx = getAudioCtx(), now = ctx.currentTime;
+      if (type === 'work')           { playTone(ctx,880,now,0.12,0.08); playTone(ctx,880,now+0.18,0.12,0.08); }
+      else if (type === 'rest')      { playTone(ctx,440,now,0.25,0.12); }
+      else if (type === 'countdown') { playTone(ctx,660,now,0.06,0.04); }
     }
 
     function keepAudioAlive() {
-      const ctx = getAudioCtx();
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
+      const ctx = getAudioCtx(), buf = ctx.createBuffer(1,1,22050), src = ctx.createBufferSource();
+      src.buffer = buf; src.connect(ctx.destination); src.start(0);
     }
 
     function startPhase(p) {
-      phase = p;
-      phaseDuration = p === 'work' ? workSec : restSec;
-      remaining = phaseDuration;
-
-      if (p === 'work') {
-        round++;
-        phaseLabel.textContent = 'ARBEIT';
-        phaseLabel.className = 'phase-label work';
-        beep('work');
-      } else {
-        phaseLabel.textContent = 'PAUSE';
-        phaseLabel.className = 'phase-label rest';
-        beep('rest');
-      }
-
-      roundDisplay.textContent = `Runde ${round}`;
-      updateDisplay();
+      phase = p; phaseDuration = p==='work'?workSec:restSec; remaining = phaseDuration;
+      if (p==='work') { round++; phaseLabel.textContent='ARBEIT'; phaseLabel.className='phase-label work'; beep('work'); }
+      else            { phaseLabel.textContent='PAUSE'; phaseLabel.className='phase-label rest'; beep('rest'); }
+      roundDisplay.textContent = `Runde ${round}`; updateDisplay();
     }
 
     function updateDisplay() {
       timeDisplay.textContent = formatTime(remaining);
-      const color = phase === 'work' ? '#4ade80' : '#60a5fa';
-      setRing(remaining / phaseDuration, color);
-
-      if (remaining <= 3 && remaining > 0) {
-        beep('countdown');
-      }
+      setRing(remaining/phaseDuration, phase==='work'?'#4ade80':'#60a5fa');
+      if (remaining<=3 && remaining>0) beep('countdown');
     }
 
     function tick() {
-      if (remaining <= 1) {
-        const next = phase === 'work' ? 'rest' : 'work';
-        startPhase(next);
-      } else {
-        remaining--;
-        updateDisplay();
-      }
+      if (remaining<=1) startPhase(phase==='work'?'rest':'work');
+      else { remaining--; updateDisplay(); }
     }
 
-    function toggle() {
-      if (running) {
-        stop();
-      } else {
-        start();
-      }
-    }
+    function toggle() { running ? stopTimer() : startTimer(); }
 
-    function start() {
-      getAudioCtx();
-      running = true;
-      round = 0;
-      startBtn.textContent = 'STOP';
-      startBtn.className = 'start-btn stop';
+    function startTimer() {
+      getAudioCtx(); running=true; round=0;
+      startBtn.textContent='STOP'; startBtn.className='start-btn stop';
       startPhase('work');
-      tickId = setInterval(tick, 1000);
-      keepAliveId = setInterval(keepAudioAlive, 20000);
+      tickId=setInterval(tick,1000); keepAliveId=setInterval(keepAudioAlive,20000);
     }
 
-    function stop() {
-      running = false;
-      clearInterval(tickId);
-      clearInterval(keepAliveId);
-      tickId = null;
-      keepAliveId = null;
-      startBtn.textContent = 'START';
-      startBtn.className = 'start-btn start';
-      phaseLabel.textContent = '—';
-      phaseLabel.className = 'phase-label idle';
-      timeDisplay.textContent = '—';
-      roundDisplay.textContent = '';
-      setRing(1, '#333');
+    function stopTimer() {
+      running=false; clearInterval(tickId); clearInterval(keepAliveId); tickId=keepAliveId=null;
+      startBtn.textContent='START'; startBtn.className='start-btn start';
+      phaseLabel.textContent='—'; phaseLabel.className='phase-label idle';
+      timeDisplay.textContent='—'; roundDisplay.textContent='';
+      setRing(1,'#333');
     }
 
-    setRing(1, '#333');
+    setRing(1,'#333');
+
+    /* HAUKE RUNNER */
+    const GW=360,GH=180,GND=148,GRAV=0.55,JUMP_V=-11.5;
+    let gRunning=false,gOver=false,gScore=0,gHi=0,gSpeed=4,gFrame=0,gAnimId=null;
+    let px=55,py=GND,pvy=0,pOnGround=true,pLeg=0,pLegT=0;
+    let obs=[],obsT=0,obsInt=90;
+    let clouds=[{x:80,y:28,w:50},{x:220,y:18,w:38},{x:310,y:34,w:44}];
+
+    function openGame() {
+      document.getElementById('gameOverlay').classList.add('active');
+      startGame();
+    }
+
+    function closeGame() {
+      document.getElementById('gameOverlay').classList.remove('active');
+      gRunning=false;
+      if (gAnimId) { cancelAnimationFrame(gAnimId); gAnimId=null; }
+    }
+
+    function startGame() {
+      gRunning=true; gOver=false; gScore=0; gSpeed=4; gFrame=0;
+      py=GND; pvy=0; pOnGround=true; pLeg=0; pLegT=0;
+      obs=[]; obsT=0; obsInt=90;
+      document.getElementById('gameHint').textContent='Tippen zum Springen!';
+      if (gAnimId) cancelAnimationFrame(gAnimId);
+      gAnimId=requestAnimationFrame(gameLoop);
+    }
+
+    function doJump() {
+      if (gOver) { startGame(); return; }
+      if (pOnGround) { pvy=JUMP_V; pOnGround=false; }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (!document.getElementById('gameOverlay').classList.contains('active')) return;
+      if (e.code==='Space'||e.code==='ArrowUp') { e.preventDefault(); doJump(); }
+    });
+
+    document.getElementById('gameCanvas').addEventListener('pointerdown', e => {
+      e.preventDefault(); doJump();
+    });
+
+    function drawStickman(ctx,x,y,leg,inAir) {
+      ctx.save();
+      ctx.strokeStyle='#a78bfa'; ctx.lineWidth=2.5;
+      ctx.lineCap='round'; ctx.lineJoin='round';
+      const headR=7,headY=y-36,neckY=y-28,hipY=y-12,armY=neckY+5;
+      ctx.beginPath(); ctx.arc(x,headY,headR,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x,neckY); ctx.lineTo(x,hipY); ctx.stroke();
+      if (inAir) {
+        ctx.beginPath(); ctx.moveTo(x,armY); ctx.lineTo(x-12,armY-9); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,armY); ctx.lineTo(x+12,armY-9); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,hipY); ctx.lineTo(x-10,y-4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,hipY); ctx.lineTo(x+10,y-4); ctx.stroke();
+      } else {
+        const s=leg===0?1:-1;
+        ctx.beginPath(); ctx.moveTo(x,armY); ctx.lineTo(x-11,armY+9*s); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,armY); ctx.lineTo(x+11,armY-9*s); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,hipY); ctx.lineTo(x-10*s,y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x,hipY); ctx.lineTo(x+10*s,y); ctx.stroke();
+      }
+      ctx.fillStyle='#6d4fc2'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Hauke',x,headY-headR-3);
+      ctx.restore();
+    }
+
+    function drawObstacle(ctx,o) {
+      const oy=GND-o.h;
+      ctx.fillStyle='#f87171'; ctx.fillRect(o.x,oy,o.w,o.h);
+      ctx.fillStyle='#fca5a5'; ctx.fillRect(o.x,oy,o.w,3);
+    }
+
+    function drawCloud(ctx,c) {
+      ctx.fillStyle='#1e1e1e';
+      ctx.beginPath(); ctx.ellipse(c.x,c.y,c.w/2,9,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(c.x-c.w*.22,c.y+3,c.w*.3,7,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(c.x+c.w*.22,c.y+4,c.w*.28,6,0,0,Math.PI*2); ctx.fill();
+    }
+
+    function hitTest(o) {
+      const pl=px-10,pr=px+10,pt=py-32,pb=py;
+      const ol=o.x+2,or2=o.x+o.w-2,ot=GND-o.h;
+      return pl<or2&&pr>ol&&pt<GND&&pb>ot;
+    }
+
+    function gameLoop() {
+      if (!gRunning) return;
+      const canvas=document.getElementById('gameCanvas');
+      const ctx=canvas.getContext('2d');
+      ctx.clearRect(0,0,GW,GH);
+
+      const grad=ctx.createLinearGradient(0,0,0,GND);
+      grad.addColorStop(0,'#0a0a0a'); grad.addColorStop(1,'#141414');
+      ctx.fillStyle=grad; ctx.fillRect(0,0,GW,GND);
+
+      for (const c of clouds) {
+        c.x-=gSpeed*0.2;
+        if (c.x+c.w<0) c.x=GW+c.w;
+        drawCloud(ctx,c);
+      }
+
+      ctx.fillStyle='#1a1a1a'; ctx.fillRect(0,GND,GW,GH-GND);
+      ctx.strokeStyle='#333'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(0,GND); ctx.lineTo(GW,GND); ctx.stroke();
+
+      ctx.strokeStyle='#252525'; ctx.lineWidth=1;
+      const dashOff=-((gFrame*gSpeed)%40);
+      for (let dx=dashOff;dx<GW;dx+=40) {
+        ctx.beginPath(); ctx.moveTo(dx,GND+7); ctx.lineTo(dx+20,GND+7); ctx.stroke();
+      }
+
+      pvy+=GRAV; py+=pvy;
+      if (py>=GND) { py=GND; pvy=0; pOnGround=true; }
+
+      if (pOnGround) { pLegT++; if (pLegT>=7) { pLeg=(pLeg+1)%2; pLegT=0; } }
+
+      drawStickman(ctx,px,py,pLeg,!pOnGround);
+
+      obsT++;
+      if (obsT>=obsInt) {
+        obs.push({x:GW+10,w:14+Math.random()*10,h:24+Math.random()*20});
+        obsT=0; obsInt=Math.max(46,90-Math.floor(gScore/300)*6);
+      }
+
+      for (let i=obs.length-1;i>=0;i--) {
+        obs[i].x-=gSpeed;
+        drawObstacle(ctx,obs[i]);
+        if (hitTest(obs[i])) { endGame(ctx); return; }
+        if (obs[i].x+obs[i].w<0) obs.splice(i,1);
+      }
+
+      gScore++; gSpeed=4+Math.floor(gScore/200)*0.4;
+
+      ctx.fillStyle='#333'; ctx.font='600 12px monospace'; ctx.textAlign='right';
+      ctx.fillText(`HI  ${gHi}`,GW-10,18);
+      ctx.fillStyle='#666'; ctx.fillText(`${gScore}`,GW-10,34);
+      ctx.textAlign='left';
+
+      gFrame++; gAnimId=requestAnimationFrame(gameLoop);
+    }
+
+    function endGame(ctx) {
+      gRunning=false; gOver=true;
+      if (gScore>gHi) gHi=gScore;
+      ctx.fillStyle='rgba(0,0,0,0.65)'; ctx.fillRect(0,0,GW,GH);
+      ctx.fillStyle='#fff'; ctx.font='bold 22px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('GAME OVER',GW/2,GH/2-12);
+      ctx.fillStyle='#555'; ctx.font='13px sans-serif';
+      ctx.fillText('Tippen zum Neustart',GW/2,GH/2+12);
+      ctx.textAlign='left';
+      document.getElementById('gameHint').textContent=
+        `Score: ${gScore}`+(gScore>=gHi?' — Neuer Rekord!':`  |  Rekord: ${gHi}`);
+    }
   </script>
 </body>
 </html>
