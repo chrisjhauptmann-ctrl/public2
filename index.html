@@ -548,6 +548,7 @@
     let bikes=[],bikeT=0,bikeInt=180;
     let birds=[],birdT=0,birdInt=150;
     let clouds=[{x:80,y:28,w:50},{x:220,y:18,w:38},{x:310,y:34,w:44}];
+    let jumpCount=0, winkler=null, winklerPending=false;
 
     function openGame() {
       document.getElementById('gameOverlay').classList.add('active');
@@ -563,9 +564,10 @@
     function startGame() {
       gRunning=true; gOver=false; gScore=0; gSpeed=4; gFrame=0;
       py=GND; pvy=0; pOnGround=true; pLeg=0; pLegT=0;
-      bikes=[]; bikeT=0; bikeInt=180;
-      birds=[]; birdT=0; birdInt=150;
-      obs=[]; obsT=0; obsInt=90;
+      bikes=[]; bikeT=0; bikeInt=240;
+      birds=[]; birdT=0; birdInt=280;
+      obs=[]; obsT=0; obsInt=100;
+      jumpCount=0; winkler=null; winklerPending=false;
       document.getElementById('gameHint').textContent='Tippen zum Springen!';
       if (gAnimId) cancelAnimationFrame(gAnimId);
       gAnimId=requestAnimationFrame(gameLoop);
@@ -573,7 +575,11 @@
 
     function doJump() {
       if (gOver) { startGame(); return; }
-      if (pOnGround) { pvy=JUMP_V; pOnGround=false; }
+      if (pOnGround) {
+        pvy=JUMP_V; pOnGround=false;
+        jumpCount++;
+        if (jumpCount % 5 === 0) winklerPending=true;
+      }
     }
 
     document.addEventListener('keydown', e => {
@@ -663,6 +669,35 @@
       return px+8>bx-12 && px-8<bx+12 && py-32<by+5 && py>by-9;
     }
 
+    function drawTuba(ctx, x) {
+      ctx.save();
+      const by=GND;
+      ctx.strokeStyle='#fbbf24'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.lineJoin='round';
+      // Main body oval
+      ctx.beginPath(); ctx.ellipse(x, by-28, 15, 20, 0, 0, Math.PI*2); ctx.stroke();
+      // Bell circle on top
+      ctx.beginPath(); ctx.arc(x, by-53, 12, 0, Math.PI*2); ctx.stroke();
+      // Bell inside dark
+      ctx.fillStyle='#1a0d00'; ctx.beginPath(); ctx.arc(x, by-53, 8, 0, Math.PI*2); ctx.fill();
+      // Tubes connecting bell to body
+      ctx.strokeStyle='#fbbf24';
+      ctx.beginPath(); ctx.moveTo(x-9,by-46); ctx.lineTo(x-15,by-34); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+9,by-46); ctx.lineTo(x+15,by-34); ctx.stroke();
+      // Valves
+      ctx.fillStyle='#fbbf24';
+      for(let i=0;i<3;i++){ ctx.beginPath(); ctx.arc(x,by-15-i*9,3.5,0,Math.PI*2); ctx.fill(); }
+      // Mouthpiece
+      ctx.beginPath(); ctx.moveTo(x+15,by-24); ctx.lineTo(x+27,by-20); ctx.stroke();
+      // Boss label
+      ctx.fillStyle='#fbbf24'; ctx.font='bold 10px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('DerWinkler', x, by-70);
+      ctx.restore();
+    }
+
+    function hitTestWinkler(wx) {
+      return px+10>wx-16 && px-10<wx+16 && py>GND-58 && py-32<GND;
+    }
+
     function gameLoop() {
       if (!gRunning) return;
       const canvas=document.getElementById('gameCanvas');
@@ -699,7 +734,9 @@
       obsT++;
       if (obsT>=obsInt) {
         obs.push({x:GW+10,w:14+Math.random()*10,h:24+Math.random()*20});
-        obsT=0; obsInt=Math.max(46,90-Math.floor(gScore/300)*6);
+        obsT=0;
+        const base=Math.max(46, 100-Math.floor(gScore/500)*8);
+        obsInt=base+Math.floor(Math.random()*50);
       }
 
       for (let i=obs.length-1;i>=0;i--) {
@@ -712,8 +749,12 @@
       // Chris bikes
       bikeT++;
       if (bikeT >= bikeInt) {
-        bikes.push({ x: GW+30 });
-        bikeT=0; bikeInt=Math.max(100, 180-Math.floor(gScore/400)*10);
+        if (gScore > 300) {
+          bikes.push({ x: GW+30 });
+        }
+        bikeT=0;
+        const bikeBase=Math.max(100, 240-Math.floor(gScore/600)*15);
+        bikeInt=bikeBase+Math.floor(Math.random()*100);
       }
       for (let i=bikes.length-1;i>=0;i--) {
         bikes[i].x -= gSpeed + 1.5;
@@ -725,15 +766,31 @@
       // Anika birds
       birdT++;
       if (birdT >= birdInt) {
-        const birdY = GND - 48 - Math.random()*18;
-        birds.push({ x: GW+20, y: birdY });
-        birdT=0; birdInt=Math.max(90, 150-Math.floor(gScore/400)*8);
+        if (gScore > 600) {
+          const birdY = GND - 48 - Math.random()*18;
+          birds.push({ x: GW+20, y: birdY });
+        }
+        birdT=0;
+        const birdBase=Math.max(90, 280-Math.floor(gScore/600)*20);
+        birdInt=birdBase+Math.floor(Math.random()*100);
       }
       for (let i=birds.length-1;i>=0;i--) {
         birds[i].x -= gSpeed;
         drawBird(ctx, birds[i].x, birds[i].y);
         if (hitTestBird(birds[i].x, birds[i].y)) { endGame(ctx); return; }
         if (birds[i].x < -40) birds.splice(i,1);
+      }
+
+      // DerWinkler boss
+      if (winklerPending && !winkler) {
+        winkler={ x: GW+40 };
+        winklerPending=false;
+      }
+      if (winkler) {
+        winkler.x -= gSpeed + 0.5;
+        drawTuba(ctx, winkler.x);
+        if (hitTestWinkler(winkler.x)) { endGame(ctx); return; }
+        if (winkler.x < -60) winkler=null;
       }
 
       gScore++; gSpeed=4+Math.floor(gScore/200)*0.4;
