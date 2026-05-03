@@ -10,28 +10,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f0f0f;
-      color: #fff;
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px 24px;
-      gap: clamp(16px, 3.5vh, 32px);
-      overflow-y: auto;
-    }
-
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 24px; gap: clamp(16px, 3.5vh, 32px); overflow-y: auto; }
     h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: #888; }
-
     .phase-label { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; min-height: 1.8rem; transition: color 0.3s; }
-    .phase-label.work  { color: #4ade80; }
-    .phase-label.rest  { color: #60a5fa; }
-    .phase-label.idle  { color: #555; }
-
+    .phase-label.work { color: #4ade80; } .phase-label.rest { color: #60a5fa; } .phase-label.idle { color: #555; }
     .timer-ring { position: relative; width: 220px; height: 220px; }
     .timer-ring svg { transform: rotate(-90deg); }
     .ring-bg { fill: none; stroke: #222; stroke-width: 12; }
@@ -39,29 +21,20 @@
     .timer-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
     .time-display { font-size: 3.8rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
     .round-display { font-size: 0.85rem; color: #666; letter-spacing: 0.06em; }
-
     .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; max-width: 320px; }
     .setting-block { background: #1a1a1a; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
     .setting-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-    .setting-label.work { color: #4ade80; }
-    .setting-label.rest { color: #60a5fa; }
+    .setting-label.work { color: #4ade80; } .setting-label.rest { color: #60a5fa; }
     .setting-value { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3ch; text-align: center; }
     .setting-controls { display: flex; gap: 12px; align-items: center; }
-
     .adj-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: #2a2a2a; color: #fff; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, transform 0.1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
     .adj-btn:active { background: #3a3a3a; transform: scale(0.92); }
-
     .start-btn { width: 100%; max-width: 320px; height: 64px; border-radius: 20px; border: none; font-size: 1.1rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: background 0.2s, transform 0.1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-    .start-btn.start { background: #4ade80; color: #0f0f0f; }
-    .start-btn.stop  { background: #f87171; color: #0f0f0f; }
-    .start-btn:active { transform: scale(0.97); }
-
-    .game-launch-btn { width: 100%; max-width: 320px; height: 48px; border-radius: 16px; border: none; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; background: #a78bfa; color: #0f0f0f; transition: background 0.2s, transform 0.1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
+    .start-btn.start { background: #4ade80; color: #0f0f0f; } .start-btn.stop { background: #f87171; color: #0f0f0f; } .start-btn:active { transform: scale(0.97); }
+    .game-launch-btn { width: 100%; max-width: 320px; height: 48px; border-radius: 16px; border: none; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; background: #a78bfa; color: #0f0f0f; transition: background 0.2s, transform 0.1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     .game-launch-btn:active { transform: scale(0.97); background: #c4b5fd; }
-
     .map-launch-btn { width: 100%; max-width: 320px; height: 48px; border-radius: 16px; border: none; font-size: 0.9rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; background: #38bdf8; color: #0f0f0f; transition: background 0.2s, transform 0.1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     .map-launch-btn:active { transform: scale(0.97); background: #7dd3fc; }
-
     #gameOverlay { display: none; position: fixed; inset: 0; background: #0f0f0f; z-index: 200; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; }
     #gameOverlay.active { display: flex; }
     .game-title { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #a78bfa; }
@@ -69,7 +42,6 @@
     .game-hint { font-size: 0.8rem; color: #444; letter-spacing: 0.06em; min-height: 1.1rem; text-align: center; }
     .back-btn { height: 48px; padding: 0 32px; border-radius: 16px; border: none; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; background: #2a2a2a; color: #fff; transition: background 0.15s, transform 0.1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     .back-btn:active { background: #3a3a3a; transform: scale(0.97); }
-
     #mapOverlay { display: none; position: fixed; inset: 0; z-index: 300; flex-direction: column; background: #0f0f0f; }
     #mapOverlay.active { display: flex; }
     .map-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #111; z-index: 400; flex-shrink: 0; }
@@ -85,10 +57,8 @@
   </style>
 </head>
 <body>
-
   <h1>Interval Timer</h1>
   <div class="phase-label idle" id="phaseLabel">—</div>
-
   <div class="timer-ring">
     <svg width="220" height="220" viewBox="0 0 220 220">
       <circle class="ring-bg" cx="110" cy="110" r="98"/>
@@ -99,7 +69,6 @@
       <div class="round-display" id="roundDisplay"></div>
     </div>
   </div>
-
   <div class="settings">
     <div class="setting-block">
       <div class="setting-label work">Arbeit</div>
@@ -120,12 +89,10 @@
       <div style="font-size:0.7rem;color:#555;">Sekunden</div>
     </div>
   </div>
-
   <button class="start-btn start" id="startBtn" onclick="toggle()">START</button>
   <button class="game-launch-btn" onclick="openGame()">HAUKE RUNNER</button>
   <button class="map-launch-btn" onclick="openMap()">KARTE</button>
 
-  <!-- Map Overlay -->
   <div id="mapOverlay">
     <div class="map-header">
       <button class="map-back-btn" onclick="closeMap()">← Zurück</button>
@@ -139,7 +106,6 @@
     <div class="map-no-result" id="mapNoResult">Kein Ergebnis gefunden</div>
   </div>
 
-  <!-- Game Overlay -->
   <div id="gameOverlay">
     <div class="game-title">Hauke Runner</div>
     <canvas id="gameCanvas" width="360" height="180"></canvas>
@@ -148,7 +114,7 @@
   </div>
 
   <script>
-    const CIRCUMFERENCE = 2 * Math.PI * 98;
+    const CIRCUMFERENCE=2*Math.PI*98;
     let workSec=60,restSec=25,running=false,tickId=null,keepAliveId=null;
     let phase='work',remaining=0,phaseDuration=0,round=0,audioCtx=null;
     const ringProgress=document.getElementById('ringProgress');
@@ -164,52 +130,16 @@
       if(type==='work'){workSec=Math.max(5,workSec+delta);document.getElementById('workVal').textContent=workSec;}
       else{restSec=Math.max(5,restSec+delta);document.getElementById('restVal').textContent=restSec;}
     }
-    function getAudioCtx(){
-      if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
-      if(audioCtx.state==='suspended')audioCtx.resume();
-      return audioCtx;
-    }
-    function playTone(ctx,freq,t,dur,ramp){
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=freq;
-      g.gain.setValueAtTime(0.4,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur+ramp);
-      o.start(t);o.stop(t+dur+ramp+0.05);
-    }
-    function beep(type){
-      const ctx=getAudioCtx(),now=ctx.currentTime;
-      if(type==='work'){playTone(ctx,880,now,0.12,0.08);playTone(ctx,880,now+0.18,0.12,0.08);}
-      else if(type==='rest'){playTone(ctx,440,now,0.25,0.12);}
-      else if(type==='countdown'){playTone(ctx,660,now,0.06,0.04);}
-    }
-    function keepAudioAlive(){
-      const ctx=getAudioCtx(),buf=ctx.createBuffer(1,1,22050),src=ctx.createBufferSource();
-      src.buffer=buf;src.connect(ctx.destination);src.start(0);
-    }
-    function startPhase(p){
-      phase=p;phaseDuration=p==='work'?workSec:restSec;remaining=phaseDuration;
-      if(p==='work'){round++;phaseLabel.textContent='ARBEIT';phaseLabel.className='phase-label work';beep('work');}
-      else{phaseLabel.textContent='PAUSE';phaseLabel.className='phase-label rest';beep('rest');}
-      roundDisplay.textContent=`Runde ${round}`;updateDisplay();
-    }
-    function updateDisplay(){
-      timeDisplay.textContent=formatTime(remaining);
-      setRing(remaining/phaseDuration,phase==='work'?'#4ade80':'#60a5fa');
-      if(remaining<=3&&remaining>0)beep('countdown');
-    }
+    function getAudioCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx;}
+    function playTone(ctx,freq,t,dur,ramp){const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.4,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur+ramp);o.start(t);o.stop(t+dur+ramp+0.05);}
+    function beep(type){const ctx=getAudioCtx(),now=ctx.currentTime;if(type==='work'){playTone(ctx,880,now,0.12,0.08);playTone(ctx,880,now+0.18,0.12,0.08);}else if(type==='rest'){playTone(ctx,440,now,0.25,0.12);}else if(type==='countdown'){playTone(ctx,660,now,0.06,0.04);}}
+    function keepAudioAlive(){const ctx=getAudioCtx(),buf=ctx.createBuffer(1,1,22050),src=ctx.createBufferSource();src.buffer=buf;src.connect(ctx.destination);src.start(0);}
+    function startPhase(p){phase=p;phaseDuration=p==='work'?workSec:restSec;remaining=phaseDuration;if(p==='work'){round++;phaseLabel.textContent='ARBEIT';phaseLabel.className='phase-label work';beep('work');}else{phaseLabel.textContent='PAUSE';phaseLabel.className='phase-label rest';beep('rest');}roundDisplay.textContent=`Runde ${round}`;updateDisplay();}
+    function updateDisplay(){timeDisplay.textContent=formatTime(remaining);setRing(remaining/phaseDuration,phase==='work'?'#4ade80':'#60a5fa');if(remaining<=3&&remaining>0)beep('countdown');}
     function tick(){if(remaining<=1)startPhase(phase==='work'?'rest':'work');else{remaining--;updateDisplay();}}
     function toggle(){running?stopTimer():startTimer();}
-    function startTimer(){
-      getAudioCtx();running=true;round=0;
-      startBtn.textContent='STOP';startBtn.className='start-btn stop';
-      startPhase('work');tickId=setInterval(tick,1000);keepAliveId=setInterval(keepAudioAlive,20000);
-    }
-    function stopTimer(){
-      running=false;clearInterval(tickId);clearInterval(keepAliveId);tickId=keepAliveId=null;
-      startBtn.textContent='START';startBtn.className='start-btn start';
-      phaseLabel.textContent='—';phaseLabel.className='phase-label idle';
-      timeDisplay.textContent='—';roundDisplay.textContent='';
-      setRing(1,'#333');
-    }
+    function startTimer(){getAudioCtx();running=true;round=0;startBtn.textContent='STOP';startBtn.className='start-btn stop';startPhase('work');tickId=setInterval(tick,1000);keepAliveId=setInterval(keepAudioAlive,20000);}
+    function stopTimer(){running=false;clearInterval(tickId);clearInterval(keepAliveId);tickId=keepAliveId=null;startBtn.textContent='START';startBtn.className='start-btn start';phaseLabel.textContent='—';phaseLabel.className='phase-label idle';timeDisplay.textContent='—';roundDisplay.textContent='';setRing(1,'#333');}
     setRing(1,'#333');
 
     // HAUKE RUNNER
@@ -217,57 +147,68 @@
     let gRunning=false,gOver=false,gScore=0,gHi=0,gSpeed=4,gFrame=0,gAnimId=null;
     let px=55,py=GND,pvy=0,pOnGround=true,pLeg=0,pLegT=0;
     let obs=[],obsT=0,obsInt=90;
+    let bikes=[],bikeT=0,bikeInt=180;
+    let birds=[],birdT=0,birdInt=150;
     let clouds=[{x:80,y:28,w:50},{x:220,y:18,w:38},{x:310,y:34,w:44}];
+
     function openGame(){document.getElementById('gameOverlay').classList.add('active');startGame();}
     function closeGame(){document.getElementById('gameOverlay').classList.remove('active');gRunning=false;if(gAnimId){cancelAnimationFrame(gAnimId);gAnimId=null;}}
     function startGame(){
       gRunning=true;gOver=false;gScore=0;gSpeed=4;gFrame=0;
       py=GND;pvy=0;pOnGround=true;pLeg=0;pLegT=0;
       obs=[];obsT=0;obsInt=90;
+      bikes=[];bikeT=0;bikeInt=180;
+      birds=[];birdT=0;birdInt=150;
       document.getElementById('gameHint').textContent='Tippen zum Springen!';
       if(gAnimId)cancelAnimationFrame(gAnimId);
       gAnimId=requestAnimationFrame(gameLoop);
     }
     function doJump(){if(gOver){startGame();return;}if(pOnGround){pvy=JUMP_V;pOnGround=false;}}
-    document.addEventListener('keydown',e=>{
-      if(!document.getElementById('gameOverlay').classList.contains('active'))return;
-      if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();doJump();}
-    });
+    document.addEventListener('keydown',e=>{if(!document.getElementById('gameOverlay').classList.contains('active'))return;if(e.code==='Space'||e.code==='ArrowUp'){e.preventDefault();doJump();}});
     document.getElementById('gameCanvas').addEventListener('pointerdown',e=>{e.preventDefault();doJump();});
+
     function drawStickman(ctx,x,y,leg,inAir){
       ctx.save();ctx.strokeStyle='#a78bfa';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.lineJoin='round';
       const hR=7,hY=y-36,nY=y-28,hiY=y-12,aY=nY+5;
       ctx.beginPath();ctx.arc(x,hY,hR,0,Math.PI*2);ctx.stroke();
       ctx.beginPath();ctx.moveTo(x,nY);ctx.lineTo(x,hiY);ctx.stroke();
-      if(inAir){
-        ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x-12,aY-9);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x+12,aY-9);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x-10,y-4);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x+10,y-4);ctx.stroke();
-      } else {
-        const s=leg===0?1:-1;
-        ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x-11,aY+9*s);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x+11,aY-9*s);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x-10*s,y);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x+10*s,y);ctx.stroke();
-      }
-      ctx.fillStyle='#6d4fc2';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
-      ctx.fillText('Hauke',x,hY-hR-3);ctx.restore();
+      if(inAir){ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x-12,aY-9);ctx.stroke();ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x+12,aY-9);ctx.stroke();ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x-10,y-4);ctx.stroke();ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x+10,y-4);ctx.stroke();}
+      else{const s=leg===0?1:-1;ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x-11,aY+9*s);ctx.stroke();ctx.beginPath();ctx.moveTo(x,aY);ctx.lineTo(x+11,aY-9*s);ctx.stroke();ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x-10*s,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x,hiY);ctx.lineTo(x+10*s,y);ctx.stroke();}
+      ctx.fillStyle='#6d4fc2';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('Hauke',x,hY-hR-3);ctx.restore();
     }
     function drawObstacle(ctx,o){const oy=GND-o.h;ctx.fillStyle='#f87171';ctx.fillRect(o.x,oy,o.w,o.h);ctx.fillStyle='#fca5a5';ctx.fillRect(o.x,oy,o.w,3);}
-    function drawCloud(ctx,c){
-      ctx.fillStyle='#1e1e1e';
-      ctx.beginPath();ctx.ellipse(c.x,c.y,c.w/2,9,0,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(c.x-c.w*.22,c.y+3,c.w*.3,7,0,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(c.x+c.w*.22,c.y+4,c.w*.28,6,0,0,Math.PI*2);ctx.fill();
+    function drawCloud(ctx,c){ctx.fillStyle='#1e1e1e';ctx.beginPath();ctx.ellipse(c.x,c.y,c.w/2,9,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(c.x-c.w*.22,c.y+3,c.w*.3,7,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(c.x+c.w*.22,c.y+4,c.w*.28,6,0,0,Math.PI*2);ctx.fill();}
+
+    function drawBike(ctx,x){
+      const r=11,wy=GND-r;
+      ctx.save();ctx.strokeStyle='#fb923c';ctx.lineWidth=2;ctx.lineCap='round';
+      ctx.beginPath();ctx.arc(x-13,wy,r,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(x+13,wy,r,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x-13,wy);ctx.lineTo(x,wy-13);ctx.lineTo(x+13,wy);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x,wy-13);ctx.lineTo(x-9,wy);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x+13,wy);ctx.lineTo(x+9,wy-15);ctx.lineTo(x+15,wy-15);ctx.stroke();
+      ctx.beginPath();ctx.arc(x+5,wy-28,5,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x,wy-13);ctx.lineTo(x+5,wy-23);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x+5,wy-23);ctx.lineTo(x+12,wy-15);ctx.stroke();
+      ctx.fillStyle='#fb923c';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
+      ctx.fillText('Chris',x,GND-r*2-22);ctx.restore();
     }
+    function drawBird(ctx,x,y){
+      ctx.save();ctx.strokeStyle='#f472b6';ctx.lineWidth=2.5;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x-14,y);ctx.quadraticCurveTo(x-7,y-9,x,y);ctx.quadraticCurveTo(x+7,y-9,x+14,y);ctx.stroke();
+      ctx.fillStyle='#f472b6';ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fill();
+      ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('Anika',x,y-13);ctx.restore();
+    }
+
     function hitTest(o){return px-10<o.x+o.w-2&&px+10>o.x+2&&py-32<GND&&py>GND-o.h;}
+    function hitTestBike(bx){return px+10>bx-11&&px-10<bx+11&&py>GND-24&&py-32<GND;}
+    function hitTestBird(bx,by){return px+8>bx-12&&px-8<bx+12&&py-32<by+5&&py>by-9;}
+
     function gameLoop(){
       if(!gRunning)return;
       const canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
       ctx.clearRect(0,0,GW,GH);
-      const grad=ctx.createLinearGradient(0,0,0,GND);
-      grad.addColorStop(0,'#0a0a0a');grad.addColorStop(1,'#141414');
+      const grad=ctx.createLinearGradient(0,0,0,GND);grad.addColorStop(0,'#0a0a0a');grad.addColorStop(1,'#141414');
       ctx.fillStyle=grad;ctx.fillRect(0,0,GW,GND);
       for(const c of clouds){c.x-=gSpeed*0.2;if(c.x+c.w<0)c.x=GW+c.w;drawCloud(ctx,c);}
       ctx.fillStyle='#1a1a1a';ctx.fillRect(0,GND,GW,GH-GND);
@@ -275,12 +216,15 @@
       ctx.strokeStyle='#252525';ctx.lineWidth=1;
       const dOff=-((gFrame*gSpeed)%40);
       for(let dx=dOff;dx<GW;dx+=40){ctx.beginPath();ctx.moveTo(dx,GND+7);ctx.lineTo(dx+20,GND+7);ctx.stroke();}
-      pvy+=GRAV;py+=pvy;
-      if(py>=GND){py=GND;pvy=0;pOnGround=true;}
+      pvy+=GRAV;py+=pvy;if(py>=GND){py=GND;pvy=0;pOnGround=true;}
       if(pOnGround){pLegT++;if(pLegT>=7){pLeg=(pLeg+1)%2;pLegT=0;}}
       drawStickman(ctx,px,py,pLeg,!pOnGround);
       obsT++;if(obsT>=obsInt){obs.push({x:GW+10,w:14+Math.random()*10,h:24+Math.random()*20});obsT=0;obsInt=Math.max(46,90-Math.floor(gScore/300)*6);}
       for(let i=obs.length-1;i>=0;i--){obs[i].x-=gSpeed;drawObstacle(ctx,obs[i]);if(hitTest(obs[i])){endGame(ctx);return;}if(obs[i].x+obs[i].w<0)obs.splice(i,1);}
+      bikeT++;if(bikeT>=bikeInt){bikes.push({x:GW+30});bikeT=0;bikeInt=Math.max(100,180-Math.floor(gScore/400)*10);}
+      for(let i=bikes.length-1;i>=0;i--){bikes[i].x-=gSpeed+1.5;drawBike(ctx,bikes[i].x);if(hitTestBike(bikes[i].x)){endGame(ctx);return;}if(bikes[i].x<-40)bikes.splice(i,1);}
+      birdT++;if(birdT>=birdInt){birds.push({x:GW+20,y:GND-48-Math.random()*18});birdT=0;birdInt=Math.max(90,150-Math.floor(gScore/400)*8);}
+      for(let i=birds.length-1;i>=0;i--){birds[i].x-=gSpeed;drawBird(ctx,birds[i].x,birds[i].y);if(hitTestBird(birds[i].x,birds[i].y)){endGame(ctx);return;}if(birds[i].x<-40)birds.splice(i,1);}
       gScore++;gSpeed=4+Math.floor(gScore/200)*0.4;
       ctx.fillStyle='#333';ctx.font='600 12px monospace';ctx.textAlign='right';
       ctx.fillText(`HI  ${gHi}`,GW-10,18);ctx.fillStyle='#666';ctx.fillText(`${gScore}`,GW-10,34);ctx.textAlign='left';
@@ -298,41 +242,11 @@
 
     // MAP
     let leafletMap=null,searchMarker=null;
-    function openMap(){
-      document.getElementById('mapOverlay').classList.add('active');
-      if(!leafletMap){
-        leafletMap=L.map('mapContainer',{zoomControl:true}).setView([51.1657,10.4515],6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(leafletMap);
-      }
-      setTimeout(()=>leafletMap.invalidateSize(),100);
-    }
+    function openMap(){document.getElementById('mapOverlay').classList.add('active');if(!leafletMap){leafletMap=L.map('mapContainer',{zoomControl:true}).setView([51.1657,10.4515],6);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(leafletMap);}setTimeout(()=>leafletMap.invalidateSize(),100);}
     function closeMap(){document.getElementById('mapOverlay').classList.remove('active');}
-    async function searchPlace(){
-      const q=document.getElementById('mapSearchInput').value.trim();
-      if(!q)return;
-      try{
-        const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,{headers:{'Accept-Language':'de'}});
-        const data=await res.json();
-        if(data.length===0){showNoResult();return;}
-        const{lat,lon,display_name}=data[0];
-        leafletMap.setView([+lat,+lon],15);
-        if(searchMarker)searchMarker.remove();
-        searchMarker=L.marker([+lat,+lon]).addTo(leafletMap).bindPopup(display_name).openPopup();
-      }catch{showNoResult();}
-    }
-    function locateMe(){
-      if(!navigator.geolocation)return;
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const{latitude:lat,longitude:lon}=pos.coords;
-        leafletMap.setView([lat,lon],15);
-        if(searchMarker)searchMarker.remove();
-        searchMarker=L.marker([lat,lon]).addTo(leafletMap).bindPopup('Mein Standort').openPopup();
-      },()=>showNoResult());
-    }
-    function showNoResult(){
-      const el=document.getElementById('mapNoResult');
-      el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);
-    }
+    async function searchPlace(){const q=document.getElementById('mapSearchInput').value.trim();if(!q)return;try{const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,{headers:{'Accept-Language':'de'}});const data=await res.json();if(data.length===0){showNoResult();return;}const{lat,lon,display_name}=data[0];leafletMap.setView([+lat,+lon],15);if(searchMarker)searchMarker.remove();searchMarker=L.marker([+lat,+lon]).addTo(leafletMap).bindPopup(display_name).openPopup();}catch{showNoResult();}}
+    function locateMe(){if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(pos=>{const{latitude:lat,longitude:lon}=pos.coords;leafletMap.setView([lat,lon],15);if(searchMarker)searchMarker.remove();searchMarker=L.marker([lat,lon]).addTo(leafletMap).bindPopup('Mein Standort').openPopup();},()=>showNoResult());}
+    function showNoResult(){const el=document.getElementById('mapNoResult');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
