@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MapMVP</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; display: flex; height: 100vh; overflow: hidden; background: #0d1117; color: #c9d1d9; }
+
+    /* MAP */
+    #map { flex: 1; min-width: 0; }
+
+    /* SIDEBAR */
+    #sidebar {
+      width: 380px;
+      display: flex;
+      flex-direction: column;
+      background: #161b22;
+      border-left: 1px solid #30363d;
+      overflow: hidden;
+    }
+
+    /* HEADER */
+    #header {
+      padding: 14px 18px;
+      background: #0f3460;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #header h1 { font-size: 1.25rem; color: #58a6ff; letter-spacing: 1px; }
+    #header small { font-size: 0.7rem; color: #8b949e; }
+
+    /* STATUS */
+    #status {
+      padding: 6px 18px;
+      font-size: 0.72rem;
+      color: #8b949e;
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #status.ready { color: #3fb950; }
+    #status.error  { color: #f85149; }
+
+    /* EDITOR */
+    .panel-label {
+      padding: 10px 18px 5px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b949e;
+    }
+
+    #editor {
+      margin: 0 12px;
+      height: 220px;
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 12.5px;
+      resize: none;
+      outline: none;
+      tab-size: 4;
+      line-height: 1.55;
+    }
+    #editor:focus { border-color: #58a6ff; }
+
+    /* BUTTONS */
+    #btn-row {
+      display: flex;
+      gap: 8px;
+      margin: 8px 12px;
+    }
+    #run-btn {
+      flex: 1;
+      padding: 9px;
+      background: #238636;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #run-btn:hover:not(:disabled) { background: #2ea043; }
+    #run-btn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+    #clear-btn {
+      padding: 9px 14px;
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    #clear-btn:hover { background: #30363d; }
+
+    /* EXAMPLES */
+    #examples {
+      margin: 0 12px 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .ex-btn {
+      padding: 3px 9px;
+      background: #0f3460;
+      color: #79c0ff;
+      border: 1px solid #1f4e8a;
+      border-radius: 12px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background .15s;
+      user-select: none;
+    }
+    .ex-btn:hover { background: #1f4e8a; }
+
+    /* OUTPUT */
+    #output {
+      margin: 0 12px 12px;
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 11.5px;
+      overflow-y: auto;
+      line-height: 1.55;
+    }
+    .out-info    { color: #79c0ff; }
+    .out-success { color: #3fb950; }
+    .out-error   { color: #f85149; }
+    .out-warn    { color: #e3b341; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="sidebar">
+  <div id="header">
+    <div>
+      <h1>&#x1F5FA; MapMVP</h1>
+      <small>Leaflet &plus; Python (Pyodide)</small>
+    </div>
+  </div>
+
+  <div id="status">&#x23F3; Python wird geladen &hellip;</div>
+
+  <div class="panel-label">Python Code <span style="color:#484f58;font-size:0.9em">(Ctrl+Enter zum Ausf&#xFC;hren)</span></div>
+  <textarea id="editor" spellcheck="false"># Marker hinzuf&#xFC;gen
+map_add_marker(48.1351, 11.5820, "M&#xFC;nchen &#x1F3D9;")
+map_add_marker(52.5200, 13.4050, "Berlin &#x1F3DB;")
+map_add_marker(53.5753, 10.0153, "Hamburg &#x2693;")
+print("3 St&#xE4;dte hinzugef&#xFC;gt!")</textarea>
+
+  <div id="btn-row">
+    <button id="run-btn" disabled>&#x25B6;&nbsp; Ausf&#xFC;hren</button>
+    <button id="clear-btn" onclick="clearMap()">&#x1F5D1; Karte</button>
+  </div>
+
+  <div class="panel-label">Beispiele</div>
+  <div id="examples">
+    <span class="ex-btn" onclick="loadEx('cities')">&#x1F3D9; St&#xE4;dte</span>
+    <span class="ex-btn" onclick="loadEx('circles')">&#x2B55; Kreise</span>
+    <span class="ex-btn" onclick="loadEx('distance')">&#x1F4CF; Distanz</span>
+    <span class="ex-btn" onclick="loadEx('heatmap')">&#x1F525; Punkte</span>
+    <span class="ex-btn" onclick="loadEx('geojson')">&#x1F4E6; GeoJSON</span>
+  </div>
+
+  <div class="panel-label">Ausgabe</div>
+  <div id="output"><span class="out-info">Bereit. Python wird initialisiert &hellip;</span></div>
+</div>
+
+<script>
+// ── Leaflet ──────────────────────────────────────────────────────────────────
+const map = L.map('map').setView([51.1657, 10.4515], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
+
+const _layers = [];
+
+window.map_add_marker = (lat, lng, label = '') => {
+  const m = L.marker([lat, lng]).addTo(map);
+  if (label) m.bindPopup(String(label));
+  _layers.push(m);
+  return `Marker bei ${lat}, ${lng}`;
+};
+
+window.map_add_circle = (lat, lng, radius = 5000, color = '#e94560', fillOpacity = 0.15) => {
+  const c = L.circle([lat, lng], { radius, color, fillOpacity }).addTo(map);
+  _layers.push(c);
+  return `Kreis r=${radius}m bei ${lat}, ${lng}`;
+};
+
+window.map_add_polygon = (coordsJson, color = '#58a6ff') => {
+  const coords = JSON.parse(coordsJson);
+  const p = L.polygon(coords, { color }).addTo(map);
+  _layers.push(p);
+  return 'Polygon gezeichnet';
+};
+
+window.map_clear = () => {
+  _layers.forEach(l => map.removeLayer(l));
+  _layers.length = 0;
+  return 'Karte geleert';
+};
+
+window.clearMap = () => { map.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.Circle || l instanceof L.Polygon) map.removeLayer(l); }); _layers.length = 0; };
+
+window.map_fly_to = (lat, lng, zoom = 10) => {
+  map.flyTo([lat, lng], zoom);
+  return `Fliege zu ${lat}, ${lng}`;
+};
+
+window.map_add_geojson = (jsonStr, color = '#58a6ff') => {
+  try {
+    const data = JSON.parse(jsonStr);
+    const layer = L.geoJSON(data, { style: { color, weight: 2 } }).addTo(map);
+    _layers.push(layer);
+    return 'GeoJSON gezeichnet';
+  } catch(e) { return 'GeoJSON Fehler: ' + e.message; }
+};
+
+// ── Output ───────────────────────────────────────────────────────────────────
+const outputEl = document.getElementById('output');
+
+function log(text, cls = '') {
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = text;
+  outputEl.appendChild(d);
+  outputEl.scrollTop = outputEl.scrollHeight;
+}
+
+function clearOutput() { outputEl.innerHTML = ''; }
+
+// ── Pyodide ──────────────────────────────────────────────────────────────────
+let pyodide = null;
+
+async function initPyodide() {
+  const statusEl = document.getElementById('status');
+  try {
+    pyodide = await loadPyodide();
+    pyodide.setStdout({ batched: t => log(t, 'out-success') });
+    pyodide.setStderr({ batched: t => log(t, 'out-error') });
+
+    await pyodide.runPythonAsync(`
+import js, json, math
+
+def map_add_marker(lat, lng, label=''):
+    return str(js.map_add_marker(lat, lng, str(label)))
+
+def map_add_circle(lat, lng, radius=5000, color='#e94560', fill_opacity=0.15):
+    return str(js.map_add_circle(lat, lng, radius, color, fill_opacity))
+
+def map_add_polygon(coords, color='#58a6ff'):
+    return str(js.map_add_polygon(json.dumps(coords), color))
+
+def map_clear():
+    return str(js.map_clear())
+
+def map_fly_to(lat, lng, zoom=10):
+    return str(js.map_fly_to(lat, lng, zoom))
+
+def map_add_geojson(data, color='#58a6ff'):
+    s = json.dumps(data) if isinstance(data, (dict, list)) else str(data)
+    return str(js.map_add_geojson(s, color))
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371.0
+    d = lambda x: math.radians(x)
+    a = math.sin(d(lat2-lat1)/2)**2 + math.cos(d(lat1))*math.cos(d(lat2))*math.sin(d(lon2-lon1)/2)**2
+    return round(R * 2 * math.asin(math.sqrt(a)), 1)
+
+print('Python bereit ✓')
+`);
+
+    statusEl.textContent = '✅ Python bereit (Pyodide ' + pyodide.version + ')';
+    statusEl.className = 'ready';
+    document.getElementById('run-btn').disabled = false;
+    log('Pyodide geladen ✓', 'out-info');
+    log('Funktionen: map_add_marker, map_add_circle, map_add_polygon, map_add_geojson, map_clear, map_fly_to, haversine', 'out-info');
+  } catch (err) {
+    statusEl.textContent = '❌ Fehler beim Laden von Python';
+    statusEl.className = 'error';
+    log('Fehler: ' + err.message, 'out-error');
+  }
+}
+
+// ── Run ──────────────────────────────────────────────────────────────────────
+document.getElementById('run-btn').addEventListener('click', async () => {
+  const code = document.getElementById('editor').value;
+  clearOutput();
+  log('▶ Starte...', 'out-info');
+  try {
+    await pyodide.runPythonAsync(code);
+  } catch (err) {
+    log(err.message, 'out-error');
+  }
+});
+
+document.getElementById('editor').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('run-btn').click();
+  }
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const t = e.target, s = t.selectionStart, end = t.selectionEnd;
+    t.value = t.value.substring(0, s) + '    ' + t.value.substring(end);
+    t.selectionStart = t.selectionEnd = s + 4;
+  }
+});
+
+// ── Examples ─────────────────────────────────────────────────────────────────
+const EXAMPLES = {
+  cities: `# Deutsche Großstädte
+städte = [
+    (52.5200, 13.4050, "Berlin ἽB"),
+    (48.1351, 11.5820, "München ἷA"),
+    (53.5753, 10.0153, "Hamburg ⚓"),
+    (51.2217,  6.7762, "Düsseldorf Ἲ8"),
+    (50.9333,  6.9500, "Köln Ἷ0"),
+    (49.4521,  7.7491, "Kaiserslautern ⚽"),
+]
+map_clear()
+for lat, lng, name in städte:
+    map_add_marker(lat, lng, name)
+map_fly_to(51.2, 10.3, 6)
+print(f"{len(städte)} Städte gezeichnet!")`,
+
+  circles: `# Konzentrische Kreise um Frankfurt
+map_clear()
+fra = (50.1109, 8.6821)
+for r, c in [(50_000,'#2a9d8f'),(100_000,'#e9c46a'),(200_000,'#e94560')]:
+    map_add_circle(*fra, radius=r, color=c)
+map_add_marker(*fra, "Frankfurt ✈")
+map_fly_to(*fra, 6)
+print("Kreise: 50 / 100 / 200 km")`,
+
+  distance: `# Luftlinien berechnen
+staedte = {
+    "Berlin":  (52.52, 13.405),
+    "München": (48.135, 11.582),
+    "Hamburg": (53.575, 10.015),
+    "Köln":   (50.933,  6.950),
+}
+map_clear()
+for name, (lat, lng) in staedte.items():
+    map_add_marker(lat, lng, name)
+
+origin = "Berlin"
+o = staedte[origin]
+print(f"Entfernungen ab {origin}:")
+for name, pos in staedte.items():
+    if name != origin:
+        d = haversine(*o, *pos)
+        print(f"  → {name}: {d} km")`,
+
+  heatmap: `# Zufällige Punkte um Deutschland
+import random
+map_clear()
+for _ in range(60):
+    lat = random.uniform(47.3, 55.0)
+    lng = random.uniform(6.0, 15.0)
+    map_add_circle(lat, lng, radius=8000, color='#58a6ff', fill_opacity=0.4)
+map_fly_to(51.2, 10.4, 6)
+print("60 zufällige Punkte gezeichnet!")`,
+
+  geojson: `# GeoJSON Rechteck
+import json
+map_clear()
+geojson = {
+    "type": "FeatureCollection",
+    "features": [{
+        "type": "Feature",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [[
+                [6.0, 47.5],[15.0, 47.5],
+                [15.0, 55.1],[6.0, 55.1],[6.0, 47.5]
+            ]]
+        },
+        "properties": {"name": "Deutschland-Umriss (vereinfacht)"}
+    }]
+}
+map_add_geojson(geojson, color='#58a6ff')
+map_fly_to(51.2, 10.5, 5)
+print("GeoJSON gezeichnet!")`,
+};
+
+window.loadEx = name => {
+  document.getElementById('editor').value = EXAMPLES[name] || '';
+};
+
+initPyodide();
+</script>
+</body>
+</html>
