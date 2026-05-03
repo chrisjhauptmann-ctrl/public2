@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Interval Timer">
+  <title>Interval Timer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 32px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    .phase-label {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-height: 1.8rem;
+      transition: color 0.3s;
+    }
+
+    .phase-label.work  { color: #4ade80; }
+    .phase-label.rest  { color: #60a5fa; }
+    .phase-label.idle  { color: #555; }
+
+    .timer-ring {
+      position: relative;
+      width: 220px;
+      height: 220px;
+    }
+
+    .timer-ring svg {
+      transform: rotate(-90deg);
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: #222;
+      stroke-width: 12;
+    }
+
+    .ring-progress {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.4s linear, stroke 0.3s;
+    }
+
+    .timer-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .time-display {
+      font-size: 3.8rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+
+    .round-display {
+      font-size: 0.85rem;
+      color: #666;
+      letter-spacing: 0.06em;
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .setting-block {
+      background: #1a1a1a;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .setting-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .setting-label.work { color: #4ade80; }
+    .setting-label.rest { color: #60a5fa; }
+
+    .setting-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      min-width: 3ch;
+      text-align: center;
+    }
+
+    .setting-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .adj-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .adj-btn:active { background: #3a3a3a; transform: scale(0.92); }
+
+    .start-btn {
+      width: 100%;
+      max-width: 320px;
+      height: 64px;
+      border-radius: 20px;
+      border: none;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .start-btn.start {
+      background: #4ade80;
+      color: #0f0f0f;
+    }
+
+    .start-btn.stop {
+      background: #f87171;
+      color: #0f0f0f;
+    }
+
+    .start-btn:active { transform: scale(0.97); }
+  </style>
+</head>
+<body>
+
+  <h1>Interval Timer</h1>
+
+  <div class="phase-label idle" id="phaseLabel">—</div>
+
+  <div class="timer-ring">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle class="ring-bg" cx="110" cy="110" r="98"/>
+      <circle class="ring-progress" id="ringProgress" cx="110" cy="110" r="98"/>
+    </svg>
+    <div class="timer-center">
+      <div class="time-display" id="timeDisplay">—</div>
+      <div class="round-display" id="roundDisplay"></div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <div class="setting-block">
+      <div class="setting-label work">Arbeit</div>
+      <div class="setting-controls">
+        <button class="adj-btn" onclick="adjust('work', -5)">−</button>
+        <div class="setting-value" id="workVal">60</div>
+        <button class="adj-btn" onclick="adjust('work', +5)">+</button>
+      </div>
+      <div style="font-size:0.7rem;color:#555;">Sekunden</div>
+    </div>
+    <div class="setting-block">
+      <div class="setting-label rest">Pause</div>
+      <div class="setting-controls">
+        <button class="adj-btn" onclick="adjust('rest', -5)">−</button>
+        <div class="setting-value" id="restVal">25</div>
+        <button class="adj-btn" onclick="adjust('rest', +5)">+</button>
+      </div>
+      <div style="font-size:0.7rem;color:#555;">Sekunden</div>
+    </div>
+  </div>
+
+  <button class="start-btn start" id="startBtn" onclick="toggle()">START</button>
+
+  <script>
+    const CIRCUMFERENCE = 2 * Math.PI * 98;
+
+    let workSec = 60;
+    let restSec = 25;
+    let running = false;
+    let intervalId = null;
+    let tickId = null;
+    let phase = 'work';
+    let remaining = 0;
+    let phaseDuration = 0;
+    let round = 0;
+    let audioCtx = null;
+    let keepAliveId = null;
+
+    const ringProgress = document.getElementById('ringProgress');
+    const timeDisplay  = document.getElementById('timeDisplay');
+    const phaseLabel   = document.getElementById('phaseLabel');
+    const roundDisplay = document.getElementById('roundDisplay');
+    const startBtn     = document.getElementById('startBtn');
+
+    ringProgress.style.strokeDasharray = CIRCUMFERENCE;
+
+    function setRing(ratio, color) {
+      const offset = CIRCUMFERENCE * (1 - ratio);
+      ringProgress.style.strokeDashoffset = offset;
+      ringProgress.style.stroke = color;
+    }
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return m > 0
+        ? `${m}:${String(sec).padStart(2, '0')}`
+        : String(sec);
+    }
+
+    function adjust(type, delta) {
+      if (running) return;
+      if (type === 'work') {
+        workSec = Math.max(5, workSec + delta);
+        document.getElementById('workVal').textContent = workSec;
+      } else {
+        restSec = Math.max(5, restSec + delta);
+        document.getElementById('restVal').textContent = restSec;
+      }
+    }
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    }
+
+    function beep(type) {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+
+      if (type === 'work') {
+        playTone(ctx, 880, now,        0.12, 0.08);
+        playTone(ctx, 880, now + 0.18, 0.12, 0.08);
+      } else if (type === 'rest') {
+        playTone(ctx, 440, now, 0.25, 0.12);
+      } else if (type === 'countdown') {
+        playTone(ctx, 660, now, 0.06, 0.04);
+      }
+    }
+
+    function playTone(ctx, freq, startTime, duration, ramp) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.4, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration + ramp);
+      osc.start(startTime);
+      osc.stop(startTime + duration + ramp + 0.05);
+    }
+
+    function keepAudioAlive() {
+      const ctx = getAudioCtx();
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    }
+
+    function startPhase(p) {
+      phase = p;
+      phaseDuration = p === 'work' ? workSec : restSec;
+      remaining = phaseDuration;
+
+      if (p === 'work') {
+        round++;
+        phaseLabel.textContent = 'ARBEIT';
+        phaseLabel.className = 'phase-label work';
+        beep('work');
+      } else {
+        phaseLabel.textContent = 'PAUSE';
+        phaseLabel.className = 'phase-label rest';
+        beep('rest');
+      }
+
+      roundDisplay.textContent = `Runde ${round}`;
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      timeDisplay.textContent = formatTime(remaining);
+      const color = phase === 'work' ? '#4ade80' : '#60a5fa';
+      setRing(remaining / phaseDuration, color);
+
+      if (remaining <= 3 && remaining > 0) {
+        beep('countdown');
+      }
+    }
+
+    function tick() {
+      if (remaining <= 1) {
+        const next = phase === 'work' ? 'rest' : 'work';
+        startPhase(next);
+      } else {
+        remaining--;
+        updateDisplay();
+      }
+    }
+
+    function toggle() {
+      if (running) {
+        stop();
+      } else {
+        start();
+      }
+    }
+
+    function start() {
+      getAudioCtx();
+      running = true;
+      round = 0;
+      startBtn.textContent = 'STOP';
+      startBtn.className = 'start-btn stop';
+      startPhase('work');
+      tickId = setInterval(tick, 1000);
+      keepAliveId = setInterval(keepAudioAlive, 20000);
+    }
+
+    function stop() {
+      running = false;
+      clearInterval(tickId);
+      clearInterval(keepAliveId);
+      tickId = null;
+      keepAliveId = null;
+      startBtn.textContent = 'START';
+      startBtn.className = 'start-btn start';
+      phaseLabel.textContent = '—';
+      phaseLabel.className = 'phase-label idle';
+      timeDisplay.textContent = '—';
+      roundDisplay.textContent = '';
+      setRing(1, '#333');
+    }
+
+    setRing(1, '#333');
+  </script>
+</body>
+</html>
