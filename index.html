@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Interval Timer">
   <title>Interval Timer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -251,6 +252,130 @@
     }
 
     .back-btn:active { background: #3a3a3a; transform: scale(0.97); }
+
+    .map-launch-btn {
+      width: 100%;
+      max-width: 320px;
+      height: 48px;
+      border-radius: 16px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: #38bdf8;
+      color: #0f0f0f;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .map-launch-btn:active { transform: scale(0.97); background: #7dd3fc; }
+
+    #mapOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      flex-direction: column;
+      background: #0f0f0f;
+    }
+    #mapOverlay.active { display: flex; }
+
+    .map-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: #111;
+      z-index: 400;
+      flex-shrink: 0;
+    }
+
+    .map-back-btn {
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #2a2a2a;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .map-search-wrap {
+      flex: 1;
+      display: flex;
+      gap: 6px;
+    }
+
+    #mapSearchInput {
+      flex: 1;
+      height: 40px;
+      border-radius: 12px;
+      border: none;
+      background: #222;
+      color: #fff;
+      padding: 0 14px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    #mapSearchInput::placeholder { color: #555; }
+
+    .map-search-btn {
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: none;
+      background: #38bdf8;
+      color: #0f0f0f;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .map-locate-btn {
+      height: 40px;
+      width: 40px;
+      border-radius: 12px;
+      border: none;
+      background: #2a2a2a;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    #mapContainer {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .map-no-result {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f87171;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 500;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .map-no-result.show { opacity: 1; }
   </style>
 </head>
 <body>
@@ -294,6 +419,22 @@
   <button class="start-btn start" id="startBtn" onclick="toggle()">START</button>
 
   <button class="game-launch-btn" onclick="openGame()">HAUKE RUNNER</button>
+  <button class="map-launch-btn" onclick="openMap()">KARTE</button>
+
+  <!-- Map Overlay -->
+  <div id="mapOverlay">
+    <div class="map-header">
+      <button class="map-back-btn" onclick="closeMap()">← Zurück</button>
+      <div class="map-search-wrap">
+        <input type="text" id="mapSearchInput" placeholder="Ort suchen…"
+               onkeydown="if(event.key==='Enter')searchPlace()">
+        <button class="map-search-btn" onclick="searchPlace()">OK</button>
+      </div>
+      <button class="map-locate-btn" onclick="locateMe()" title="Mein Standort">📍</button>
+    </div>
+    <div id="mapContainer"></div>
+    <div class="map-no-result" id="mapNoResult">Kein Ergebnis gefunden</div>
+  </div>
 
   <!-- Game Overlay -->
   <div id="gameOverlay">
@@ -551,6 +692,61 @@
       document.getElementById('gameHint').textContent=
         `Score: ${gScore}`+(gScore>=gHi?' — Neuer Rekord!':`  |  Rekord: ${gHi}`);
     }
+    // ── MAP ──
+    let leafletMap = null;
+    let searchMarker = null;
+
+    function openMap() {
+      document.getElementById('mapOverlay').classList.add('active');
+      if (!leafletMap) {
+        leafletMap = L.map('mapContainer', { zoomControl: true }).setView([51.1657, 10.4515], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap',
+          maxZoom: 19
+        }).addTo(leafletMap);
+      }
+      setTimeout(() => leafletMap.invalidateSize(), 100);
+    }
+
+    function closeMap() {
+      document.getElementById('mapOverlay').classList.remove('active');
+    }
+
+    async function searchPlace() {
+      const q = document.getElementById('mapSearchInput').value.trim();
+      if (!q) return;
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`,
+          { headers: { 'Accept-Language': 'de' } }
+        );
+        const data = await res.json();
+        if (data.length === 0) { showNoResult(); return; }
+        const { lat, lon, display_name } = data[0];
+        leafletMap.setView([+lat, +lon], 15);
+        if (searchMarker) searchMarker.remove();
+        searchMarker = L.marker([+lat, +lon]).addTo(leafletMap)
+          .bindPopup(display_name).openPopup();
+      } catch { showNoResult(); }
+    }
+
+    function locateMe() {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        leafletMap.setView([lat, lon], 15);
+        if (searchMarker) searchMarker.remove();
+        searchMarker = L.marker([lat, lon]).addTo(leafletMap)
+          .bindPopup('Mein Standort').openPopup();
+      }, () => showNoResult());
+    }
+
+    function showNoResult() {
+      const el = document.getElementById('mapNoResult');
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2500);
+    }
   </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </body>
 </html>
