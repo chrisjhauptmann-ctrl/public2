@@ -193,6 +193,7 @@
 
     .game-launch-btn:active { transform: scale(0.97); background: #c4b5fd; }
 
+    /* Game Overlay */
     #gameOverlay {
       display: none;
       position: fixed;
@@ -251,6 +252,57 @@
     }
 
     .back-btn:active { background: #3a3a3a; transform: scale(0.97); }
+
+    .game2-launch-btn {
+      width: 100%;
+      max-width: 320px;
+      height: 48px;
+      border-radius: 16px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: #fbbf24;
+      color: #0f0f0f;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .game2-launch-btn:active { transform: scale(0.97); background: #fcd34d; }
+
+    #game2Overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0f0f0f;
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 20px;
+    }
+    #game2Overlay.active { display: flex; }
+
+    .game2-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #fbbf24;
+    }
+
+    #gameCanvas2 {
+      border-radius: 14px;
+      background: #111;
+      touch-action: none;
+      width: min(360px, 100%);
+      height: auto;
+      display: block;
+    }
 
     .map-launch-btn {
       width: 100%;
@@ -418,6 +470,7 @@
   <button class="start-btn start" id="startBtn" onclick="toggle()">START</button>
 
   <button class="game-launch-btn" onclick="openGame()">HAUKE RUNNER</button>
+  <button class="game2-launch-btn" onclick="openGame2()">GT HAUKE 6</button>
   <button class="map-launch-btn" onclick="openMap()">KARTE</button>
 
   <!-- Map Overlay -->
@@ -433,6 +486,14 @@
     </div>
     <div id="mapContainer"></div>
     <div class="map-no-result" id="mapNoResult">Kein Ergebnis gefunden</div>
+  </div>
+
+  <!-- GT Hauke 6 Overlay -->
+  <div id="game2Overlay">
+    <div class="game2-title">GT Hauke 6</div>
+    <canvas id="gameCanvas2" width="360" height="240"></canvas>
+    <div class="game-hint" id="game2Hint">Links: Bewegen &nbsp;|&nbsp; Rechts: Schießen</div>
+    <button class="back-btn" onclick="closeGame2()">← ZURÜCK</button>
   </div>
 
   <!-- Game Overlay -->
@@ -638,6 +699,7 @@
       ctx.beginPath(); ctx.moveTo(x-13,wy); ctx.lineTo(x,wy-13); ctx.lineTo(x+13,wy); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x,wy-13); ctx.lineTo(x-9,wy); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x+13,wy); ctx.lineTo(x+9,wy-15); ctx.lineTo(x+15,wy-15); ctx.stroke();
+      // Rider
       ctx.beginPath(); ctx.arc(x+5,wy-28,5,0,Math.PI*2); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x,wy-13); ctx.lineTo(x+5,wy-23); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x+5,wy-23); ctx.lineTo(x+12,wy-15); ctx.stroke();
@@ -813,7 +875,7 @@
       document.getElementById('gameHint').textContent=
         `Score: ${gScore}`+(gScore>=gHi?' — Neuer Rekord!':`  |  Rekord: ${gHi}`);
     }
-
+    // ── MAP ──
     let leafletMap = null;
     let searchMarker = null;
 
@@ -866,6 +928,393 @@
       const el = document.getElementById('mapNoResult');
       el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    /* ── GT HAUKE 6 ── */
+    const G2W=360, G2H=240, P2R=10, P2SPD=3, B2SPD=7;
+    let g2Running=false, g2Over=false;
+    let g2Score=0, g2Hi=0, g2Lives=3, g2Wave=0, g2AnimId2=null, g2Frame2=0;
+    let p2x=G2W/2, p2y=G2H/2, p2angle=0, p2inv=0;
+    let g2Bullets=[], g2ShootCD=0;
+    let g2Enemies=[], g2Pylons=[], g2EProj=[], g2Pickups=[];
+    let g2Chris2=null, g2Anika2=null, g2Winkler2=null;
+    let g2ChrisT=0, g2AnikaT=0;
+    let g2WaveActive=false, g2WaveDelay=0;
+    let joy2={active:false,cx:0,cy:0,dx:0,dy:0,id:-1};
+    let shoot2={active:false,id:-1};
+    const G2KEYS={};
+    let g2TouchSetup=false;
+
+    const G2DESKS=[
+      {x:60,y:50,w:44,h:26},{x:256,y:50,w:44,h:26},
+      {x:60,y:164,w:44,h:26},{x:256,y:164,w:44,h:26},
+      {x:148,y:107,w:64,h:26}
+    ];
+
+    function openGame2() {
+      document.getElementById('game2Overlay').classList.add('active');
+      if (!g2TouchSetup) { setupGame2Touch(); g2TouchSetup=true; }
+      startGame2();
+    }
+
+    function closeGame2() {
+      document.getElementById('game2Overlay').classList.remove('active');
+      g2Running=false;
+      if (g2AnimId2) { cancelAnimationFrame(g2AnimId2); g2AnimId2=null; }
+    }
+
+    function startGame2() {
+      g2Running=true; g2Over=false;
+      g2Score=0; g2Lives=3; g2Wave=0; g2Frame2=0;
+      p2x=G2W/2; p2y=G2H/2; p2angle=0; p2inv=0;
+      g2Bullets=[]; g2Enemies=[]; g2Pylons=[]; g2EProj=[]; g2Pickups=[];
+      g2Chris2=null; g2Anika2=null; g2Winkler2=null;
+      g2ChrisT=0; g2AnikaT=0; g2ShootCD=0;
+      joy2={active:false,cx:0,cy:0,dx:0,dy:0,id:-1};
+      shoot2={active:false,id:-1};
+      g2WaveActive=false; g2WaveDelay=60;
+      document.getElementById('game2Hint').textContent='Links: Bewegen  |  Rechts: Schießen';
+      if (g2AnimId2) cancelAnimationFrame(g2AnimId2);
+      g2AnimId2=requestAnimationFrame(gameLoop2);
+    }
+
+    function setupGame2Touch() {
+      const cv=document.getElementById('gameCanvas2');
+      cv.addEventListener('pointerdown', e=>{
+        if (g2Over) { startGame2(); return; }
+        if (!g2Running) return;
+        e.preventDefault();
+        const r=cv.getBoundingClientRect();
+        const cx=(e.clientX-r.left)*(G2W/r.width);
+        const cy=(e.clientY-r.top)*(G2H/r.height);
+        if (cx<G2W/2) { if(!joy2.active) joy2={active:true,cx,cy,dx:0,dy:0,id:e.pointerId}; }
+        else { shoot2={active:true,id:e.pointerId}; }
+      },{passive:false});
+      cv.addEventListener('pointermove', e=>{
+        if (e.pointerId!==joy2.id) return;
+        e.preventDefault();
+        const r=cv.getBoundingClientRect();
+        joy2.dx=(e.clientX-r.left)*(G2W/r.width)-joy2.cx;
+        joy2.dy=(e.clientY-r.top)*(G2H/r.height)-joy2.cy;
+      },{passive:false});
+      cv.addEventListener('pointerup', e=>{
+        if (e.pointerId===joy2.id){joy2.active=false;joy2.dx=0;joy2.dy=0;}
+        if (e.pointerId===shoot2.id) shoot2.active=false;
+      });
+      cv.addEventListener('pointercancel', e=>{
+        if (e.pointerId===joy2.id){joy2.active=false;joy2.dx=0;joy2.dy=0;}
+        if (e.pointerId===shoot2.id) shoot2.active=false;
+      });
+    }
+
+    document.addEventListener('keydown', e=>{
+      if (!document.getElementById('game2Overlay').classList.contains('active')) return;
+      G2KEYS[e.code]=true;
+    });
+    document.addEventListener('keyup', e=>{ G2KEYS[e.code]=false; });
+
+    function g2dist(ax,ay,bx,by){ return Math.sqrt((ax-bx)**2+(ay-by)**2); }
+
+    function circleRect2(cx,cy,cr,rx,ry,rw,rh){
+      return g2dist(cx,cy,Math.max(rx,Math.min(cx,rx+rw)),Math.max(ry,Math.min(cy,ry+rh)))<cr;
+    }
+
+    function startWave2() {
+      g2Wave++;
+      const isBoss=(g2Wave%3===0);
+      if (isBoss) {
+        g2Winkler2={x:G2W-50,y:G2H/2,hp:5,angle:Math.PI,shootT:0};
+        spawnPylons2(Math.min(Math.floor(g2Wave/3),3));
+        document.getElementById('game2Hint').textContent=`BOSS WELLE ${g2Wave} — DerWinkler!`;
+      } else {
+        const n=2+g2Wave*2;
+        for(let i=0;i<n;i++) spawnEnemy2();
+        spawnPylons2(Math.min(g2Wave-1,4));
+        document.getElementById('game2Hint').textContent=`Welle ${g2Wave}`;
+      }
+    }
+
+    function spawnEnemy2() {
+      const side=Math.floor(Math.random()*4);
+      let ex,ey;
+      if(side===0){ex=Math.random()*G2W;ey=-20;}
+      else if(side===1){ex=G2W+20;ey=Math.random()*G2H;}
+      else if(side===2){ex=Math.random()*G2W;ey=G2H+20;}
+      else{ex=-20;ey=Math.random()*G2H;}
+      g2Enemies.push({x:ex,y:ey,spd:0.9+Math.random()*0.6+g2Wave*0.08,hp:1});
+    }
+
+    const PYLON_POS=[{x:100,y:80},{x:260,y:80},{x:100,y:160},{x:260,y:160},{x:180,y:40}];
+    function spawnPylons2(n) {
+      g2Pylons=[];
+      for(let i=0;i<Math.min(n,PYLON_POS.length);i++)
+        g2Pylons.push({...PYLON_POS[i],pulseT:Math.floor(Math.random()*120),waves:[]});
+    }
+
+    function takeDamage2() {
+      if(p2inv>0) return;
+      g2Lives--;
+      p2inv=90;
+      if(g2Lives<=0) endGame2();
+    }
+
+    function endGame2() {
+      g2Over=true; g2Running=false;
+      if(g2Score>g2Hi) g2Hi=g2Score;
+      const ctx=document.getElementById('gameCanvas2').getContext('2d');
+      ctx.fillStyle='rgba(0,0,0,0.72)'; ctx.fillRect(0,0,G2W,G2H);
+      ctx.fillStyle='#fff'; ctx.font='bold 22px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('GAME OVER',G2W/2,G2H/2-12);
+      ctx.fillStyle='#555'; ctx.font='13px sans-serif';
+      ctx.fillText('Tippen zum Neustart',G2W/2,G2H/2+12);
+      document.getElementById('game2Hint').textContent=
+        `Score: ${g2Score}`+(g2Score>=g2Hi?' — Neuer Rekord!':`  |  Rekord: ${g2Hi}`);
+    }
+
+    function gameLoop2() {
+      if (!g2Running) return;
+      const ctx=document.getElementById('gameCanvas2').getContext('2d');
+      ctx.clearRect(0,0,G2W,G2H);
+
+      ctx.fillStyle='#121218'; ctx.fillRect(0,0,G2W,G2H);
+      ctx.strokeStyle='#1c1c26'; ctx.lineWidth=1;
+      for(let x=0;x<G2W;x+=30){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,G2H);ctx.stroke();}
+      for(let y=0;y<G2H;y+=30){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(G2W,y);ctx.stroke();}
+
+      for(const d of G2DESKS){
+        ctx.fillStyle='#231c1c'; ctx.fillRect(d.x,d.y,d.w,d.h);
+        ctx.strokeStyle='#332828'; ctx.lineWidth=1; ctx.strokeRect(d.x,d.y,d.w,d.h);
+        ctx.fillStyle='#443030'; ctx.fillRect(d.x+4,d.y+4,d.w-8,8);
+      }
+
+      if (!g2WaveActive && g2WaveDelay>0) {
+        g2WaveDelay--;
+        if (g2WaveDelay===0) { startWave2(); g2WaveActive=true; }
+      }
+      if (g2WaveActive && g2Enemies.length===0 && !g2Winkler2) {
+        g2WaveActive=false; g2WaveDelay=150;
+        g2Pickups.push({x:G2W/2+(Math.random()-.5)*100,y:G2H/2+(Math.random()-.5)*80,t:0});
+      }
+
+      let mx=0,my=0;
+      if(G2KEYS['ArrowLeft']||G2KEYS['KeyA']) mx-=1;
+      if(G2KEYS['ArrowRight']||G2KEYS['KeyD']) mx+=1;
+      if(G2KEYS['ArrowUp']||G2KEYS['KeyW']) my-=1;
+      if(G2KEYS['ArrowDown']||G2KEYS['KeyS']) my+=1;
+      if(joy2.active){
+        const jl=Math.sqrt(joy2.dx**2+joy2.dy**2);
+        if(jl>8){mx=joy2.dx/jl;my=joy2.dy/jl;}
+      }
+      const ml=Math.sqrt(mx**2+my**2);
+      if(ml>0){mx/=ml;my/=ml;p2angle=Math.atan2(my,mx);}
+
+      let np2x=p2x+mx*P2SPD, np2y=p2y+my*P2SPD;
+      np2x=Math.max(P2R,Math.min(G2W-P2R,np2x));
+      np2y=Math.max(P2R,Math.min(G2H-P2R,np2y));
+      let blocked=false;
+      for(const d of G2DESKS) if(circleRect2(np2x,np2y,P2R,d.x,d.y,d.w,d.h)){blocked=true;break;}
+      if(!blocked){p2x=np2x;p2y=np2y;}
+      if(p2inv>0) p2inv--;
+
+      if(g2ShootCD>0) g2ShootCD--;
+      if((shoot2.active||G2KEYS['Space']||G2KEYS['KeyZ'])&&g2ShootCD===0){
+        g2Bullets.push({x:p2x+Math.cos(p2angle)*13,y:p2y+Math.sin(p2angle)*13,
+          dx:Math.cos(p2angle)*B2SPD,dy:Math.sin(p2angle)*B2SPD});
+        g2ShootCD=11;
+      }
+
+      for(let i=g2Bullets.length-1;i>=0;i--){
+        const b=g2Bullets[i];
+        b.x+=b.dx; b.y+=b.dy;
+        if(b.x<0||b.x>G2W||b.y<0||b.y>G2H){g2Bullets.splice(i,1);continue;}
+        let hit=false;
+        for(const d of G2DESKS) if(circleRect2(b.x,b.y,3,d.x,d.y,d.w,d.h)){hit=true;break;}
+        if(hit){g2Bullets.splice(i,1);continue;}
+        for(let j=g2Enemies.length-1;j>=0;j--){
+          if(g2dist(b.x,b.y,g2Enemies[j].x,g2Enemies[j].y)<13){
+            g2Enemies.splice(j,1); g2Score+=10; hit=true;
+            if(Math.random()<0.12) g2Pickups.push({x:b.x,y:b.y,t:0});
+            break;
+          }
+        }
+        if(hit){g2Bullets.splice(i,1);continue;}
+        if(g2Winkler2&&g2dist(b.x,b.y,g2Winkler2.x,g2Winkler2.y)<22){
+          g2Winkler2.hp--; g2Score+=25; g2Bullets.splice(i,1);
+          if(g2Winkler2.hp<=0){
+            g2Score+=150; g2Winkler2=null;
+            g2Pickups.push({x:G2W/2,y:G2H/2,t:0});
+          }
+          continue;
+        }
+        ctx.fillStyle='#e2e8f0'; ctx.fillRect(b.x-4,b.y-2,8,4);
+        ctx.fillStyle='#94a3b8'; ctx.fillRect(b.x-4,b.y-2,8,1);
+      }
+
+      for(let i=g2Enemies.length-1;i>=0;i--){
+        const e=g2Enemies[i];
+        const dx=p2x-e.x,dy=p2y-e.y,dl=Math.sqrt(dx*dx+dy*dy);
+        const ex2=e.x+dx/dl*e.spd, ey2=e.y+dy/dl*e.spd;
+        let eb=false;
+        for(const d of G2DESKS) if(circleRect2(ex2,ey2,10,d.x,d.y,d.w,d.h)){eb=true;break;}
+        if(!eb){e.x=ex2;e.y=ey2;}
+        ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(Math.atan2(dy,dx));
+        ctx.fillStyle='#fb923c'; ctx.fillRect(-9,-9,18,18);
+        ctx.fillStyle='#fdba74'; ctx.fillRect(-8,-14,5,7); ctx.fillRect(3,-14,5,7);
+        ctx.fillStyle='#7c2d12'; ctx.fillRect(-5,-4,3,3); ctx.fillRect(2,-4,3,3);
+        ctx.fillStyle='#fb923c'; ctx.font='bold 6px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('PT',0,4); ctx.restore();
+        ctx.fillStyle='#fb923c'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('Papiertiger',e.x,e.y+20);
+        if(p2inv===0&&g2dist(p2x,p2y,e.x,e.y)<P2R+9) takeDamage2();
+      }
+
+      for(const pl of g2Pylons){
+        pl.pulseT++;
+        if(pl.pulseT%110===0) pl.waves.push({r:0});
+        for(let i=pl.waves.length-1;i>=0;i--){
+          const sw=pl.waves[i]; sw.r+=2.2;
+          const al=Math.max(0,1-sw.r/65);
+          ctx.strokeStyle=`rgba(251,191,36,${al})`; ctx.lineWidth=2;
+          ctx.beginPath(); ctx.arc(pl.x,pl.y,sw.r,0,Math.PI*2); ctx.stroke();
+          if(p2inv===0&&Math.abs(g2dist(p2x,p2y,pl.x,pl.y)-sw.r)<P2R+3) takeDamage2();
+          if(sw.r>65) pl.waves.splice(i,1);
+        }
+        ctx.save(); ctx.translate(pl.x,pl.y);
+        ctx.strokeStyle='#fbbf24'; ctx.lineWidth=3; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(0,14); ctx.lineTo(0,-14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-12,-6); ctx.lineTo(12,-6); ctx.stroke();
+        ctx.fillStyle='#fbbf24';
+        ctx.beginPath();ctx.arc(-12,-6,3,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(12,-6,3,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(0,-14,3,0,Math.PI*2);ctx.fill();
+        ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.fillText('⚡',0,6);
+        ctx.restore();
+      }
+
+      g2ChrisT++;
+      if(g2ChrisT>280&&!g2Chris2){
+        const d2=Math.random()<0.5?1:-1;
+        g2Chris2={x:d2>0?-40:G2W+40,y:20+Math.random()*(G2H-40),dir:d2};
+        g2ChrisT=0;
+      }
+      if(g2Chris2){
+        g2Chris2.x+=5*g2Chris2.dir;
+        ctx.save(); ctx.translate(g2Chris2.x,g2Chris2.y);
+        if(g2Chris2.dir<0) ctx.scale(-1,1);
+        ctx.strokeStyle='#fb923c'; ctx.lineWidth=2; ctx.lineCap='round';
+        ctx.beginPath();ctx.arc(-10,0,6,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.arc(10,0,6,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(0,-7);ctx.lineTo(10,0);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(-6,0);ctx.stroke();
+        ctx.fillStyle='#fb923c'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('Chris',0,-16); ctx.restore();
+        if(p2inv===0&&g2dist(p2x,p2y,g2Chris2.x,g2Chris2.y)<P2R+10) takeDamage2();
+        if(g2Chris2.x>G2W+60||g2Chris2.x<-60) g2Chris2=null;
+      }
+
+      g2AnikaT++;
+      if(g2AnikaT>220&&!g2Anika2){
+        g2Anika2={x:-20,y:30+Math.random()*(G2H-60),t:0};
+        g2AnikaT=0;
+      }
+      if(g2Anika2){
+        g2Anika2.x+=3.5; g2Anika2.t++;
+        const ay=g2Anika2.y+Math.sin(g2Anika2.t*0.1)*22;
+        ctx.save(); ctx.strokeStyle='#f472b6'; ctx.lineWidth=2; ctx.lineCap='round';
+        ctx.beginPath();
+        ctx.moveTo(g2Anika2.x-10,ay);ctx.quadraticCurveTo(g2Anika2.x-5,ay-8,g2Anika2.x,ay);
+        ctx.quadraticCurveTo(g2Anika2.x+5,ay-8,g2Anika2.x+10,ay);ctx.stroke();
+        ctx.fillStyle='#f472b6'; ctx.font='bold 7px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('Anika',g2Anika2.x,ay-14); ctx.restore();
+        if(p2inv===0&&g2dist(p2x,p2y,g2Anika2.x,ay)<P2R+8) takeDamage2();
+        if(g2Anika2.x>G2W+30) g2Anika2=null;
+      }
+
+      if(g2Winkler2){
+        const w=g2Winkler2;
+        const wdx=p2x-w.x,wdy=p2y-w.y,wl=Math.sqrt(wdx**2+wdy**2);
+        w.x+=wdx/wl*1.3; w.y+=wdy/wl*1.3;
+        w.angle=Math.atan2(wdy,wdx); w.shootT++;
+        if(w.shootT%80===0){
+          for(let s=-1;s<=1;s++){
+            const a=w.angle+s*0.38;
+            g2EProj.push({x:w.x,y:w.y,dx:Math.cos(a)*4,dy:Math.sin(a)*4});
+          }
+        }
+        ctx.save(); ctx.translate(w.x,w.y);
+        ctx.strokeStyle='#fbbf24'; ctx.lineWidth=3; ctx.lineCap='round';
+        ctx.beginPath();ctx.ellipse(0,0,18,14,0,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#1a0d00';ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#fbbf24';
+        ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(22,4);ctx.stroke();
+        for(let i=0;i<3;i++){ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(-2+i*4,8,2.5,0,Math.PI*2);ctx.fill();}
+        ctx.fillStyle='#333';ctx.fillRect(-18,20,36,5);
+        ctx.fillStyle='#f87171';ctx.fillRect(-18,20,36*(w.hp/5),5);
+        ctx.fillStyle='#fbbf24';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
+        ctx.fillText('DerWinkler',0,-26); ctx.restore();
+        if(p2inv===0&&g2dist(p2x,p2y,w.x,w.y)<P2R+18) takeDamage2();
+      }
+
+      for(let i=g2EProj.length-1;i>=0;i--){
+        const ep=g2EProj[i];
+        ep.x+=ep.dx; ep.y+=ep.dy;
+        if(ep.x<0||ep.x>G2W||ep.y<0||ep.y>G2H){g2EProj.splice(i,1);continue;}
+        ctx.fillStyle='#fbbf24'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('♩',ep.x,ep.y+5);
+        if(p2inv===0&&g2dist(p2x,p2y,ep.x,ep.y)<P2R+5){
+          g2EProj.splice(i,1); takeDamage2(); continue;
+        }
+      }
+
+      for(let i=g2Pickups.length-1;i>=0;i--){
+        const pk=g2Pickups[i]; pk.t++;
+        if(pk.t>360&&pk.t%8<4){g2Pickups.splice(i,1);continue;}
+        ctx.font='16px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('☕',pk.x,pk.y+6);
+        if(g2dist(p2x,p2y,pk.x,pk.y)<P2R+12){
+          g2Lives=Math.min(3,g2Lives+1); g2Pickups.splice(i,1);
+        }
+      }
+
+      ctx.save(); ctx.translate(p2x,p2y);
+      if(p2inv>0&&p2inv%6<3) ctx.globalAlpha=0.35;
+      ctx.strokeStyle='#a78bfa'; ctx.lineWidth=2.5; ctx.lineCap='round';
+      ctx.beginPath(); ctx.arc(0,0,P2R,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,0);
+      ctx.lineTo(Math.cos(p2angle)*(P2R+6),Math.sin(p2angle)*(P2R+6)); ctx.stroke();
+      ctx.fillStyle='#a78bfa';
+      ctx.beginPath();ctx.arc(Math.cos(p2angle)*5,Math.sin(p2angle)*5,2.5,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+      ctx.fillStyle='#6d4fc2'; ctx.font='bold 8px sans-serif'; ctx.textAlign='center';
+      ctx.fillText('Hauke',0,-P2R-6); ctx.restore();
+
+      for(let i=0;i<3;i++){
+        ctx.fillStyle=i<g2Lives?'#f87171':'#333';
+        ctx.font='15px sans-serif'; ctx.textAlign='left';
+        ctx.fillText(i<g2Lives?'♥':'♡',10+i*18,17);
+      }
+      ctx.fillStyle='#444'; ctx.font='600 11px monospace'; ctx.textAlign='right';
+      ctx.fillText(`HI ${g2Hi}`,G2W-8,14);
+      ctx.fillStyle='#777'; ctx.fillText(`${g2Score}`,G2W-8,28);
+      ctx.fillStyle='#333'; ctx.font='10px monospace'; ctx.textAlign='center';
+      ctx.fillText(`Welle ${g2Wave}`,G2W/2,14);
+      ctx.fillStyle='#ffffff'; ctx.font='10px monospace'; ctx.textAlign='left';
+      ctx.fillText('v4',6,G2H-6);
+
+      if(joy2.active){
+        const jl=Math.sqrt(joy2.dx**2+joy2.dy**2),cl=Math.min(jl,30);
+        const jnx=jl>0?joy2.dx/jl*cl:0,jny=jl>0?joy2.dy/jl*cl:0;
+        ctx.save(); ctx.globalAlpha=0.22;
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(joy2.cx,joy2.cy,30,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#fff';
+        ctx.beginPath();ctx.arc(joy2.cx+jnx,joy2.cy+jny,13,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+      }
+
+      g2Frame2++;
+      g2AnimId2=requestAnimationFrame(gameLoop2);
     }
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
