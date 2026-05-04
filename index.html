@@ -549,6 +549,8 @@
     let birds=[],birdT=0,birdInt=150;
     let clouds=[{x:80,y:28,w:50},{x:220,y:18,w:38},{x:310,y:34,w:44}];
     let jumpCount=0, winkler=null, winklerPending=false;
+    let lastSpawnFrame=0;
+    const VERSION='v4';
 
     function openGame() {
       document.getElementById('gameOverlay').classList.add('active');
@@ -568,6 +570,7 @@
       birds=[]; birdT=0; birdInt=280;
       obs=[]; obsT=0; obsInt=100;
       jumpCount=0; winkler=null; winklerPending=false;
+      lastSpawnFrame=0;
       document.getElementById('gameHint').textContent='Tippen zum Springen!';
       if (gAnimId) cancelAnimationFrame(gAnimId);
       gAnimId=requestAnimationFrame(gameLoop);
@@ -733,7 +736,10 @@
 
       obsT++;
       if (obsT>=obsInt) {
-        obs.push({x:GW+10,w:14+Math.random()*10,h:24+Math.random()*20});
+        if (gFrame-lastSpawnFrame >= 70) {
+          obs.push({x:GW+10,w:14+Math.random()*10,h:24+Math.random()*20});
+          lastSpawnFrame=gFrame;
+        }
         obsT=0;
         const base=Math.max(46, 100-Math.floor(gScore/500)*8);
         obsInt=base+Math.floor(Math.random()*50);
@@ -746,11 +752,11 @@
         if (obs[i].x+obs[i].w<0) obs.splice(i,1);
       }
 
-      // Chris bikes
       bikeT++;
       if (bikeT >= bikeInt) {
-        if (gScore > 300) {
+        if (gScore > 300 && gFrame-lastSpawnFrame >= 70) {
           bikes.push({ x: GW+30 });
+          lastSpawnFrame=gFrame;
         }
         bikeT=0;
         const bikeBase=Math.max(100, 240-Math.floor(gScore/600)*15);
@@ -763,12 +769,12 @@
         if (bikes[i].x < -40) bikes.splice(i,1);
       }
 
-      // Anika birds
       birdT++;
       if (birdT >= birdInt) {
-        if (gScore > 600) {
+        if (gScore > 600 && gFrame-lastSpawnFrame >= 70) {
           const birdY = GND - 48 - Math.random()*18;
           birds.push({ x: GW+20, y: birdY });
+          lastSpawnFrame=gFrame;
         }
         birdT=0;
         const birdBase=Math.max(90, 280-Math.floor(gScore/600)*20);
@@ -798,6 +804,8 @@
       ctx.fillStyle='#333'; ctx.font='600 12px monospace'; ctx.textAlign='right';
       ctx.fillText(`HI  ${gHi}`,GW-10,18);
       ctx.fillStyle='#666'; ctx.fillText(`${gScore}`,GW-10,34);
+      ctx.fillStyle='#ffffff'; ctx.font='10px monospace'; ctx.textAlign='left';
+      ctx.fillText(VERSION,6,12);
       ctx.textAlign='left';
 
       gFrame++; gAnimId=requestAnimationFrame(gameLoop);
