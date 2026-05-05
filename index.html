@@ -427,6 +427,64 @@
       transition: opacity 0.3s;
     }
     .map-no-result.show { opacity: 1; }
+
+    .spoon-launch-btn {
+      width: 100%;
+      max-width: 320px;
+      height: 48px;
+      border-radius: 16px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: #d1d5db;
+      color: #0f0f0f;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      user-select: none;
+    }
+    .spoon-launch-btn:active { transform: scale(0.97); background: #e5e7eb; }
+
+    #spoonOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0f0f0f;
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 20px;
+    }
+    #spoonOverlay.active { display: flex; }
+
+    .spoon-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #d1d5db;
+    }
+
+    #spoonCanvas {
+      border-radius: 14px;
+      background: #111;
+      touch-action: none;
+      width: min(320px, 100%);
+      height: auto;
+      display: block;
+    }
+
+    .spoon-hint {
+      font-size: 0.8rem;
+      color: #444;
+      letter-spacing: 0.06em;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -471,7 +529,16 @@
 
   <button class="game-launch-btn" onclick="openGame()">HAUKE RUNNER</button>
   <button class="game2-launch-btn" onclick="openGame2()">GT HAUKE 6</button>
+  <button class="spoon-launch-btn" onclick="openSpoon()">🥄 LÖFFEL</button>
   <button class="map-launch-btn" onclick="openMap()">KARTE</button>
+
+  <!-- Löffel Overlay -->
+  <div id="spoonOverlay">
+    <div class="spoon-title">🥄 Dein Löffel</div>
+    <canvas id="spoonCanvas" width="320" height="320"></canvas>
+    <div class="spoon-hint" id="spoonHint">Rühre die Suppe um!</div>
+    <button class="back-btn" onclick="closeSpoon()">← ZURÜCK</button>
+  </div>
 
   <!-- Map Overlay -->
   <div id="mapOverlay">
@@ -1340,6 +1407,191 @@
 
       g2Frame2++;
       g2AnimId2=requestAnimationFrame(gameLoop2);
+    }
+
+    /* ── LÖFFEL APP ── */
+    const SW=320, SH=320, SCX=SW/2, SCY=SH/2, BOWL_R=110;
+    let spoonAnimId=null;
+    let spoonAngle=0, spoonVel=0;
+    let soupParticles=[];
+    let spoonDragging=false, spoonLastX=0, spoonLastY=0;
+    let stirCount=0, stirDir=0, lastStirDir=0, soupTemp=20;
+    let spoonHandX=SCX, spoonHandY=SCY-20;
+
+    for(let i=0;i<38;i++){
+      const a=Math.random()*Math.PI*2, r=Math.random()*70;
+      soupParticles.push({
+        x:SCX+Math.cos(a)*r, y:SCY+Math.sin(a)*r,
+        vx:0, vy:0,
+        color:`hsl(${28+Math.random()*20},${60+Math.random()*20}%,${30+Math.random()*15}%)`,
+        r:3+Math.random()*5
+      });
+    }
+
+    function openSpoon(){
+      document.getElementById('spoonOverlay').classList.add('active');
+      setupSpoonTouch();
+      if(!spoonAnimId) spoonAnimId=requestAnimationFrame(spoonLoop);
+    }
+    function closeSpoon(){
+      document.getElementById('spoonOverlay').classList.remove('active');
+      if(spoonAnimId){cancelAnimationFrame(spoonAnimId);spoonAnimId=null;}
+    }
+
+    function setupSpoonTouch(){
+      const cv=document.getElementById('spoonCanvas');
+      cv.addEventListener('pointermove',e=>{
+        e.preventDefault();
+        const r=cv.getBoundingClientRect();
+        const nx=(e.clientX-r.left)*(SW/r.width);
+        const ny=(e.clientY-r.top)*(SH/r.height);
+        const dx=nx-spoonHandX, dy=ny-spoonHandY;
+        if(spoonDragging){
+          const speed=Math.sqrt(dx*dx+dy*dy);
+          const newAngle=Math.atan2(ny-SCY,nx-SCX);
+          const da=newAngle-spoonAngle;
+          const wrapped=((da+Math.PI*3)%(Math.PI*2))-Math.PI;
+          spoonVel+=wrapped*0.18;
+          const curDir=wrapped>0?1:-1;
+          if(curDir!==lastStirDir){stirCount++;lastStirDir=curDir;}
+          if(stirCount>1) soupTemp=Math.min(100,soupTemp+0.4);
+          for(const p of soupParticles){
+            const pdx=p.x-SCX,pdy=p.y-SCY;
+            const pr=Math.sqrt(pdx*pdx+pdy*pdy);
+            if(pr<BOWL_R-12){
+              const tang=wrapped*0.3*(1-pr/(BOWL_R));
+              p.vx+=(-pdy/pr)*tang + (nx-spoonHandX)*0.012;
+              p.vy+=(pdx/pr)*tang + (ny-spoonHandY)*0.012;
+            }
+          }
+          updateSpoonHint();
+        }
+        spoonHandX=nx; spoonHandY=ny;
+        spoonLastX=nx; spoonLastY=ny;
+      },{passive:false});
+      cv.addEventListener('pointerdown',e=>{
+        e.preventDefault(); spoonDragging=true;
+        const r=cv.getBoundingClientRect();
+        spoonHandX=(e.clientX-r.left)*(SW/r.width);
+        spoonHandY=(e.clientY-r.top)*(SH/r.height);
+      },{passive:false});
+      cv.addEventListener('pointerup',()=>spoonDragging=false);
+      cv.addEventListener('pointercancel',()=>spoonDragging=false);
+    }
+
+    function updateSpoonHint(){
+      const el=document.getElementById('spoonHint');
+      if(soupTemp<40) el.textContent='Rühre die Suppe um!';
+      else if(soupTemp<70) el.textContent=`Suppe wärmt sich auf… ${Math.round(soupTemp)}°C`;
+      else if(soupTemp<95) el.textContent=`Heiß! ${Math.round(soupTemp)}°C 🔥`;
+      else el.textContent='🍜 Suppe ist fertig! Guten Appetit!';
+    }
+
+    function spoonLoop(){
+      spoonAnimId=requestAnimationFrame(spoonLoop);
+      const cv=document.getElementById('spoonCanvas');
+      const ctx=cv.getContext('2d');
+      ctx.clearRect(0,0,SW,SH);
+
+      // Bowl shadow
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=30;
+      ctx.fillStyle='#1a0e00';
+      ctx.beginPath(); ctx.ellipse(SCX,SCY,BOWL_R+4,BOWL_R+4,0,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      // Bowl background
+      ctx.fillStyle='#2a1800';
+      ctx.beginPath(); ctx.ellipse(SCX,SCY,BOWL_R,BOWL_R,0,0,Math.PI*2); ctx.fill();
+
+      // Soup base color (changes with temp)
+      const hue=28+soupTemp*0.3;
+      const soup=ctx.createRadialGradient(SCX,SCY,10,SCX,SCY,BOWL_R-5);
+      soup.addColorStop(0,`hsl(${hue},65%,28%)`);
+      soup.addColorStop(1,`hsl(${hue},55%,18%)`);
+      ctx.fillStyle=soup;
+      ctx.beginPath(); ctx.ellipse(SCX,SCY,BOWL_R-5,BOWL_R-5,0,0,Math.PI*2); ctx.fill();
+
+      // Soup particles (ingredients)
+      for(const p of soupParticles){
+        p.vx*=0.91; p.vy*=0.91;
+        p.x+=p.vx; p.y+=p.vy;
+        const pdx=p.x-SCX,pdy=p.y-SCY,pr=Math.sqrt(pdx*pdx+pdy*pdy);
+        if(pr>BOWL_R-14){
+          const nx2=pdx/pr,ny2=pdy/pr;
+          p.x=SCX+nx2*(BOWL_R-14); p.y=SCY+ny2*(BOWL_R-14);
+          p.vx-=nx2*Math.abs(p.vx)*1.4; p.vy-=ny2*Math.abs(p.vy)*1.4;
+        }
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+        ctx.fillStyle=p.color; ctx.fill();
+      }
+
+      // Steam if hot
+      if(soupTemp>50){
+        const steamAlpha=(soupTemp-50)/50*0.6;
+        for(let s=0;s<3;s++){
+          const sx=SCX-40+s*40, t=Date.now()/900+s*2.1;
+          ctx.save(); ctx.globalAlpha=steamAlpha*Math.abs(Math.sin(t));
+          ctx.strokeStyle='#e0d0c0'; ctx.lineWidth=2; ctx.lineCap='round';
+          ctx.beginPath();
+          ctx.moveTo(sx,SCY-BOWL_R+10);
+          ctx.quadraticCurveTo(sx+14*Math.sin(t),SCY-BOWL_R-18,sx,SCY-BOWL_R-38);
+          ctx.stroke(); ctx.restore();
+        }
+      }
+
+      // Bowl rim
+      ctx.strokeStyle='#5a3a10'; ctx.lineWidth=6;
+      ctx.beginPath(); ctx.ellipse(SCX,SCY,BOWL_R,BOWL_R,0,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle='#8a5a18'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.ellipse(SCX,SCY,BOWL_R,BOWL_R,0,0,Math.PI*2); ctx.stroke();
+
+      // Spoon physics
+      spoonVel*=0.88;
+      spoonAngle+=spoonVel;
+      const spoonR=BOWL_R-22;
+      const spoonBowlX=SCX+Math.cos(spoonAngle)*spoonR;
+      const spoonBowlY=SCY+Math.sin(spoonAngle)*spoonR;
+
+      // Spoon handle direction toward hand (or default angle)
+      const hx=spoonDragging?spoonHandX:spoonBowlX+Math.cos(spoonAngle+Math.PI)*70;
+      const hy=spoonDragging?spoonHandY:spoonBowlY+Math.sin(spoonAngle+Math.PI)*70;
+      const hdx=hx-spoonBowlX, hdy=hy-spoonBowlY;
+      const hlen=Math.sqrt(hdx*hdx+hdy*hdy)||1;
+      const hux=hdx/hlen, huy=hdy/hlen;
+
+      // Draw spoon handle
+      const handleEnd={x:spoonBowlX+hux*80,y:spoonBowlY+huy*80};
+      const grad=ctx.createLinearGradient(spoonBowlX,spoonBowlY,handleEnd.x,handleEnd.y);
+      grad.addColorStop(0,'#e8e8e8'); grad.addColorStop(0.4,'#c0c0c0'); grad.addColorStop(1,'#a0a0a0');
+      ctx.strokeStyle=grad; ctx.lineWidth=7; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(spoonBowlX,spoonBowlY); ctx.lineTo(handleEnd.x,handleEnd.y); ctx.stroke();
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(spoonBowlX-huy*1,spoonBowlY+hux*1); ctx.lineTo(handleEnd.x-huy*1,handleEnd.y+hux*1); ctx.stroke();
+
+      // Draw spoon bowl (ellipse, tilted)
+      ctx.save(); ctx.translate(spoonBowlX,spoonBowlY); ctx.rotate(spoonAngle+Math.PI/2);
+      const spg=ctx.createRadialGradient(-2,-4,1,0,0,11);
+      spg.addColorStop(0,'#f5f5f5'); spg.addColorStop(1,'#b0b0b0');
+      ctx.fillStyle=spg;
+      ctx.beginPath(); ctx.ellipse(0,0,9,13,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#888'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.ellipse(0,0,9,13,0,0,Math.PI*2); ctx.stroke();
+      // Soup in spoon
+      if(soupTemp>30){
+        ctx.fillStyle=`hsla(${hue},60%,35%,0.7)`;
+        ctx.beginPath(); ctx.ellipse(0,2,6,8,0,0,Math.PI*2); ctx.fill();
+      }
+      ctx.restore();
+
+      // Temp gauge bottom
+      ctx.fillStyle='#1a1a1a'; ctx.fillRect(SCX-60,SH-22,120,10);
+      ctx.fillStyle=`hsl(${120-soupTemp*1.2},80%,45%)`;
+      ctx.fillRect(SCX-60,SH-22,120*(soupTemp/100),10);
+      ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.strokeRect(SCX-60,SH-22,120,10);
+      ctx.fillStyle='#555'; ctx.font='9px monospace'; ctx.textAlign='center';
+      ctx.fillText(`${Math.round(soupTemp)}°C`,SCX,SH-8);
     }
   </script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
